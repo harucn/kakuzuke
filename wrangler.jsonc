@@ -6,5 +6,6 @@
   "main": "@tanstack/react-start/server-entry",
   "assets": {
     "html_handling": "drop-trailing-slash"
-  }
+  },
+  "previews": {}
 }
