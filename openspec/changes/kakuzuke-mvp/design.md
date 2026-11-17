@@ -29,13 +29,13 @@
 - リクエストごとの SSR。`prerender.enabled: false` にすれば SSR に切り替えられる構造は残すが、使わない。
 - `/host` の URL を秘匿すること（proposal の範囲外）。
 - 実行時の問題データの検証（ビルド時に検証済みの値を信頼する）。
-- `public/images` 内の未使用画像の検出（ユーザー判断で対象外。写真の整理は作者が行う）。
+- 画像フォルダ内の未使用画像の検出（公開されないので、検出しなくても漏れない）。
 
 ## Decisions
 
 ### 1. 利用者側から見た形（Usage）
 
-問題の作者は `content/questions.yaml` と `public/images/` だけを編集する。選択肢のラベルと写真のファイル名は並び順から決まるので書かない。第 n 問の k 番目の選択肢の写真は `public/images/q{n}-{a|b|c}.{jpg|png|webp}` に置く。
+問題の作者は `content/questions.yaml` と `content/images/` だけを編集する。写真は `content/images/` に好きな名前で置き、`image` でファイル名を指定する。選択肢のラベル A/B/C は `options` に書いた順で決まる。
 
 ```yaml
 # content/questions.yaml
@@ -44,14 +44,14 @@ questions:
     title: ワイン
     description: 高いワインはどちら？
     explanation: B は 1本 5万円のボルドー。A はスーパーで買えるテーブルワインでした。
-    options:                       # 並び順に A, B（写真は q1-a.*, q1-b.*）
-      - { rank: 2, name: テーブルワイン, price: "1本 1,000円" }
-      - { rank: 1, name: ボルドーの赤,   price: "1本 5万円" }
+    options:                       # 書いた順に A, B
+      - { image: テーブルワイン.jpg, rank: 2, name: テーブルワイン, price: "1本 1,000円" }
+      - { image: ボルドー.jpg,       rank: 1, name: ボルドーの赤,   price: "1本 5万円" }
 ```
 
 ```text
 ✗ content/questions.yaml
-  questions[0].options[1]      第 1 問 B の写真 q1-b.(jpg|png|webp) が public/images にありません
+  questions[0].options[1].image  写真 ボルドー.jpg が content/images にありません
   questions[2].options         rank は 1〜3 を 1 回ずつ使ってください（1, 1, 2）
   questions[0].description     参加者に見える文に価格「1本 5万円」が含まれています
 ```
@@ -81,18 +81,18 @@ export const Route = createFileRoute("/host")({
 
 ### 2. データの形（`src/question-set/model.ts`）
 
-正解は `rank` だけが持ち、ほかの表現はすべて導出する（principle-model-the-domain）。ラベルと写真も並び順から導出し、作者の入力からは外す。
+正解は `rank` だけが持ち、ほかの表現はすべて導出する（principle-model-the-domain）。ラベルは並び順から導出する。写真は作者が元のファイル名で指定し、ドメインモデルには公開 URL だけを持たせる（元のファイル名はプラグインの外に出さない）。
 
 ```ts
 export type Mode = "pick" | "order";
 export type Label = "A" | "B" | "C";
 export type Rank = 1 | 2 | 3;
-/** q{問題番号}-{a|b|c}.{jpg|png|webp}。parseQuestionSet が実在するファイルから決める */
-export type ImageFile = string & { readonly __brand: "ImageFile" };
+/** 公開 URL（例 "/images/3f9a2c41.jpg"）。中身のハッシュから作り、元のファイル名を含まない。parseQuestionSet だけが作れる */
+export type ImageUrl = string & { readonly __brand: "ImageUrl" };
 
 export interface Option {
   readonly label: Label;    // 並び順から導出
-  readonly image: ImageFile; // 並び順と実在ファイルから導出
+  readonly image: ImageUrl;  // 作者の指定したファイルの公開 URL
   readonly rank: Rank;      // 1 = 最も高価。正解の唯一の情報源
   readonly name: string;
   readonly price: string;   // 表示用の文字列。比較しない
@@ -129,20 +129,17 @@ export function answerOf(q: Question): Answer;
 /** 漏洩とみなす文字列: 全選択肢の name と price、全問題の explanation（重複は除く）。rank は数値なので構造で検査する */
 export function secretStrings(set: QuestionSet): readonly string[];
 
-/** 写真の配信 URL を知る唯一の場所（public/images → /images） */
-export function imageUrl(file: ImageFile): string;
 ```
 
 ### 3. 検証（`src/question-set/parse.ts`）
 
-`parseQuestionSet(input: unknown, availableImages: ReadonlySet<string>): ParseResult` は純粋関数で、最初の誤りで止まらず全件を集める。zod はこのファイルの中だけで使う。写真の一覧は引数で受け取るので、Vitest でも `Set` を渡して写真の欠落を試せる。
+`parseQuestionSet(input: unknown, images: ReadonlyMap<string, ImageUrl>): ParseResult` は純粋関数で、最初の誤りで止まらず全件を集める。zod はこのファイルの中だけで使う。`images` は「画像フォルダ内の元のファイル名 → 公開 URL」の対応で、ファイルを読んでハッシュを取るのはプラグインの役目。Vitest では `Map` を渡して写真の欠落を試せる。
 
 ```ts
 export type IssueCode =
-  | "shape"             // 必須項目の欠落・空文字・空白だけ（name・price を含む）、未知の mode、選択肢 1 個や 4 個、問題 0 件
+  | "shape"             // 必須項目の欠落・空文字・空白だけ（image・name・price を含む）、未知の mode、選択肢 1 個や 4 個、問題 0 件
   | "rank-permutation"  // rank が 1..n の並べ替えでない（rank 1 がない・重複・範囲外）
-  | "image-missing"     // q{n}-{x}.(jpg|png|webp) がない
-  | "image-ambiguous"   // 同じ選択肢の写真が拡張子違いで複数ある
+  | "image-missing"     // image に指定したファイルが画像フォルダにない
   | "public-text-leak"; // 問題名・説明に、セット内の銘柄・価格・解説の文字列がある
 export interface Issue { readonly code: IssueCode; readonly path: readonly (string | number)[]; readonly message: string }
 export type ParseResult =
@@ -161,7 +158,7 @@ export type ParseResult =
 ```ts
 export interface KakuzukeOptions {
   readonly contentDir?: string; // 既定 "content"。環境変数 KAKUZUKE_CONTENT_DIR でも上書きできる（E2E のフィクスチャ用）
-  readonly imagesDir?: string;  // 既定 "public/images"
+  readonly imagesDir?: string;  // 既定 "content/images"。public/ の外に置き、Vite がそのまま公開しないようにする
   readonly serverEnvironment?: string; // 既定 "ssr"。正解を読める唯一の環境
 }
 export function kakuzukeQuestions(options?: KakuzukeOptions): Plugin;
@@ -171,12 +168,14 @@ export function loadQuestionSet(root: string, options?: KakuzukeOptions): Questi
 
 | フック | 動作 |
 | --- | --- |
-| `buildStart`（build） | YAML を読み、画像ディレクトリを一覧して `parseQuestionSet`。誤りがあれば `this.error(formatIssues(issues))` でビルドを止める |
+| `buildStart`（build） | YAML を読み、画像フォルダの各ファイルの中身のハッシュから公開 URL の対応表を作って `parseQuestionSet`。誤りがあれば `this.error(formatIssues(issues))` でビルドを止める |
 | `buildStart`（dev） | 同じ検証をするが、誤りは保持するだけでサーバーは起動させる |
 | `configureServer` | 問題ファイルと画像ディレクトリを監視し、変更時に再検証して、全環境の両仮想モジュールを無効化する |
 | `load("virtual:kakuzuke/public")` | dev で誤りを保持していれば throw（エラーオーバーレイに全件が出る）。なければ `toPublic(set)` を `export default` する。どの環境でも読める |
 | `load("virtual:kakuzuke/answers")` | `this.environment.name` が `serverEnvironment` のときだけ全データを返す。それ以外は `this.error`（許可リスト方式。名前が変わった環境や新しい環境は拒否される） |
 | `load(問題ファイル)` | サーバー環境以外からの直接 import を `this.error` にする |
+| `generateBundle`（client 環境） | 検証済みのセットが指定している写真だけを `this.emitFile` で `images/<ハッシュ>.<拡張子>` として出力する。指定されていない画像は出力しない |
+| `configureServer`（dev の配信） | `/images/<ハッシュ>.<拡張子>` へのリクエストに、対応表から元のファイルを返す |
 
 ### 5. 配信: 両ルートを事前レンダリングする
 
@@ -184,7 +183,7 @@ export function loadQuestionSet(root: string, options?: KakuzukeOptions): Questi
 - 参加者画面はデータ取得の経路を持たない。公開形はビルド時に参加者の HTML と JS へ埋め込まれ、実行時のリクエストは静的ファイルと写真だけになる。
 - `wrangler.jsonc` の `assets.html_handling` を `"drop-trailing-slash"` にし、`/host` が転送なしで `host/index.html` を返すようにする（TanStack Router の既定 `trailingSlash: 'never'` と URL の形を揃え、hydration のずれと loader の再実行を防ぐ）。
 - Worker は `/_serverFn/*` の受け口として残す。司会画面の表示中にサーバー関数が呼ばれないことは E2E で確かめる（Decisions 10）。
-- 写真は `public/images/` に置き、`dist/client/images/` から static assets として配信する。司会画面は次の問題の写真を先読みする。
+- 写真は `content/images/` に置き、ビルド時に指定されたものだけが `dist/client/images/<ハッシュ>.<拡張子>` に出力され、static assets として配信される。司会画面は次の問題の写真を先読みする。
 
 ### 6. 漏洩の証明（`tests/leak.ts`、`tests/build/*.test.ts`）
 
@@ -195,7 +194,7 @@ export function loadQuestionSet(root: string, options?: KakuzukeOptions): Questi
 1. **秘密リストの検査**: `secretStrings(loadQuestionSet(root))` が空でなく、件数が「全選択肢の name と price、全問題の explanation の重複を除いた数」と一致すること。リストが空や欠けていると、以下の検査はすべて素通りになるため最初に確かめる。
 2. **陽性対照 1（埋め込み）**: `dist/client/host/index.html` から全秘密文字列が見つかること。
 3. **陽性対照 2（クライアント JS のカナリア）**: 参加者画面のクライアントコードに置いた固定の文字列（日本語を含む `LEAK_CANARY`）が `dist/client` の JS から見つかること。クライアントの minify や文字コードの設定が変わって検出器が読めなくなれば、ここで失敗する。
-4. **本検査**: `dist/client` の全ファイル（全 JS チャンク、CSS、HTML、ソースマップ）のうち `host/index.html` 以外に、秘密文字列が 1 つもないこと。見つかったときはファイル名と前後の文字を報告する。
+4. **本検査**: `dist/client` の全ファイル（全 JS チャンク、CSS、HTML、ソースマップ）のうち `host/index.html` 以外に、秘密文字列が 1 つもないこと。見つかったときはファイル名と前後の文字を報告する。あわせて、`image` に指定された元のファイル名（拡張子を除く部分）が `dist/client` のどのファイル（`host/index.html` を含む）の中身にもパスにも現れないこと、`dist/client/images/` の画像の数が指定された写真の種類数と一致することを確かめる。
 5. **公開データの構造検査**: プラグインが `virtual:kakuzuke/public` に出す値そのもの（`load` の出力）が `toPublic(loadQuestionSet(root))` と一致し、各問題のキーが `PUBLIC_QUESTION_KEYS`、各選択肢のキーが `PUBLIC_OPTION_KEYS` と完全一致すること。`rank` は文字列検索できないので、これで保証する。
 6. **プラグインの壁の回帰テスト**（`tests/build/plugin.test.ts`）: Vite の `build()` API を小さなフィクスチャで実行し、(a) 誤りを 3 種含む YAML で全件を列挙して失敗する、(b) クライアントのモジュールから `virtual:kakuzuke/answers` を import すると失敗する、(c) クライアントのモジュールから問題ファイルを直接 import すると失敗する、ことを確かめる。
 
@@ -267,11 +266,11 @@ export function installHostKeys(target: Window, dispatch: (e: HostEvent) => void
 
 ```text
 content/questions.yaml ─┐   作者が編集する（クライアントからの import はビルドエラー）
-public/images/qN-x.*  ──┤
+content/images/*      ──┤
                         ▼
 src/question-set/vite-plugin.ts   検証・仮想モジュール・環境の壁・loadQuestionSet
-  ├ parse.ts   検証規則（zod はここだけ）。ラベルと写真を並び順から決める
-  └ model.ts   型・toPublic・answerOf・secretStrings・imageUrl
+  ├ parse.ts   検証規則（zod はここだけ）。ラベルを並び順から決め、写真を公開 URL に置き換える
+  └ model.ts   型・toPublic・answerOf・secretStrings
   ├─ virtual:kakuzuke/public  → src/routes/index.tsx "/"  → src/guest/GuestScreen.tsx（LEAK_CANARY を含む）
   └─ virtual:kakuzuke/answers → src/host/host-data.functions.ts（createServerFn）
                                   ↑ loader
@@ -301,7 +300,9 @@ tests/unit/ tests/build/ tests/e2e/ tests/fixtures/content/
 - **問題番号を URL（`/host?q=3`）で持つ形**: 事前レンダリングした HTML は任意のクエリに対応できず hydration がずれる。URL と reducer の両方が状態を持つことにもなる。再読み込みの復元は `sessionStorage` で行う。
 - **Space・Enter を、キーボードでフォーカスされたボタンでは押下扱いにする形**: spec の「Space キーで正解発表する」を一部の状況で満たさなくなる。`:focus-visible` の挙動への依存も増える。
 - **問題ファイルを JSON にする形**: 読み込みは単純になるが、コメントを書けず、作者の編集がしにくい。
-- **ラベルと写真の名前を作者に書かせて検証する形**: 並び順から決まる値を手で書かせると、取り違えを検証で落とす規則が要る。導出すれば取り違えそのものが起きない。
+- **ラベルを作者に書かせて検証する形**: 並び順から決まる値を手で書かせると、取り違えを検証で落とす規則が要る。導出すれば取り違えそのものが起きない。
+- **写真を `q1-a.jpg` のような並び順から決まる名前で置かせる形**: 作者が付けたい名前を使えず、問題を並べ替えるたびに写真の名前も変える必要がある。元の名前は公開時に付け替えるので、好きな名前を付けても漏れない。
+- **`public/images/` に置いた写真をそのまま公開する形**: 元のファイル名が URL に出て、指定していない画像まで公開される。
 - **エンコードの種類ごとに検索語を増やす検出器**: `\xNN` や数値実体参照などを取りこぼす。復号してから探せば種類を列挙しなくてよい。
 - **漏洩検出の陽性対照を `dist/ssr`（サーバー側バンドル）に置く形**: サーバー側とクライアント側は minify などの設定が違うので、クライアント JS を読めることの証明にならない。クライアント JS のカナリアに置き換えた。
 
@@ -321,10 +322,10 @@ tests/unit/ tests/build/ tests/e2e/ tests/fixtures/content/
 - [実データの解説が長く、プロジェクタで切れる] → 実データの E2E（Decisions 10）が 1920×1080 で溢れを検出し、デプロイ前に気づける。直し方は文面を短くすること。
 - [プレゼン用リモコンが Space・Enter を送れず、正解発表をリモコンで操作できない] → 本番前に実機のリモコンで `/host` を操作し、送られるキーを確かめる（tasks の Workflow follow-up）。足りなければキー表に追加する変更を別に起こす。
 - [全画面ボタンはキーボードで押せない（Space・Enter は常に正解発表になる）] → マウスで押す。キーボードの全画面ショートカットは spec にないので追加しない。
-- [写真の EXIF や写り込んだラベル、`public/images` に残した名前付きの画像から正解が漏れる] → 走査では検出できない。写真の準備時に作者が確認する（未使用画像の検出はユーザー判断で対象外）。
+- [写真の EXIF や写り込んだラベルから正解が漏れる] → 走査では検出できない。写真の準備時に作者が確認する。
+- [client 環境の `generateBundle` で出力した画像が、Cloudflare プラグインの出力先 `dist/client` に入らない、または事前レンダリングより後に出力される] → 3.1 の検証（`dist/client/images/` にハッシュ名の画像があること）と E2E の写真表示で気づける。代わりに `buildStart` で `public/` 以外の作業フォルダに書き出して公開対象に加える。タスク 3.1 で確定。
 - [短い ASCII の銘柄（例「A5」）がチャンクのハッシュ名などに偶然一致して走査が失敗する] → 走査はファイル名と前後の文字を報告するので、誤検出と見分けられる。直し方は銘柄の表記を変えること。
 - 正解の埋め込まれた `/host/index.html` は、URL を知っていれば誰でも開ける。これは SSR の `/host` と同じで、proposal の範囲外。
-- 写真のファイル名が問題の順番に結びつくので、問題を並べ替えたら写真の名前も変える。代わりに、別の問題の写真を取り違える誤りが起きない。
 - 説明文に価格を書けない（`public-text-leak`）。代わりに漏洩走査の判定が正確になる。
 
 ## Migration Plan
