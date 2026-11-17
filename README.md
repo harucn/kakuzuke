@@ -57,6 +57,7 @@ questions:
 | `pnpm build` | 問題ファイルを検証し、`/` と `/host` を事前レンダリングして、正解の漏洩を走査する。どれかが失敗したらビルドも失敗する |
 | `pnpm e2e` | フィクスチャ（`tests/fixtures/content`）でビルドして E2E を流し、実データでビルドし直して全問を通す E2E を流す |
 | `pnpm run deploy` | `pnpm test` と `pnpm build` の後に `wrangler deploy` で公開する |
+| `pnpm run deploy:preview` | 同じ手順の最後を `wrangler preview` にして、本番に出さずにプレビューを作る。Workers Builds が main 以外のブランチで使う |
 
 `pnpm e2e` の後の `dist` は実データのビルドなので、そのままデプロイできる。
 
@@ -75,6 +76,7 @@ Workers Builds の設定はファイルに書けず、Cloudflare ダッシュボ
 | Git branch | `main` |
 | Build command | 空欄 |
 | Deploy command | `pnpm run deploy` |
+| Preview command | `pnpm run deploy:preview` |
 
 Node のバージョンは `.node-version` で決める。CI と Workers Builds はこのファイルを読む。asdf に読ませるには `~/.asdfrc` に `legacy_version_file = yes` を書く。Node 26 には Corepack が同梱されていない。Workers Builds が pnpm を起動できない場合は、ビルド変数に `NODE_VERSION=24` を入れる。
 
