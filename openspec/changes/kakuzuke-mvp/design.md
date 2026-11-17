@@ -330,6 +330,9 @@ tests/unit/ tests/build/ tests/e2e/ tests/fixtures/content/
 - 確定（3.2）: 事前レンダリングした `/host` を開いて hydration しても `/_serverFn/` へのリクエストは起きない（`vite preview` と Playwright で確認。リクエストは HTML と JS 2 本だけ）。hydration 後に `/` へ移動して `/host` に戻っても起きない（`staleTime: Infinity` によると推定。外した対照は取っていない）。`/` を開いてからクライアント側で `/host` に遷移したときだけ GET が 1 回起き、Worker が 200 を返す。
 - 確定（3.2）: `QuestionSet` のブランド（タプルとの交差型）は `createServerFn` の直列化の型検査を通らない（配列のメソッドまで直列化の対象として検査される）。handler の戻り値の型を `readonly [Question, ...Question[]]` に広げて返すので、`/host` の loader の値はブランドを持たない。`HostScreen` はこの型を受け取る。
 
+- 確定（3.3）: 検出器は JS のエスケープ（`\uXXXX`・`\u{…}`・`\xNN`・`\` と任意の 1 文字）と HTML の実体参照（名前付き 6 種と数値）を 1 回の走査で戻してから探す。カナリア `LEAK_CANARY` は参加者画面のルート要素の `data-leak-canary` 属性に描画し、クライアント JS と `index.html` の両方で陽性対照にする。既知の穴: HTML の地の文で、末尾が `\` の秘密や `\` の直後が実体参照になる秘密は一致しない（JS と埋め込みデータでは一致する）。
+- 確定（3.3）: 写真の元のファイル名が `a.png` のように 1〜2 文字だと、名前の検査がチャンクの中身に大量に誤一致してビルドが失敗する（安全側の失敗）。写真には意味のある名前を付ける（README に書く）。E2E のフィクスチャの写真も意味のある名前にする。
+
 ほかのリスク:
 
 - [dev の `buildStart` でエラーを投げるとサーバーが起動しない] → dev では誤りを保持し、仮想モジュールの `load` で投げてオーバーレイに出す（Decisions 4）。タスク 3.1 で `pnpm dev` を実際に起動して確かめる。

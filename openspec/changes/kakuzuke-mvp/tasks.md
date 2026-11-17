@@ -16,7 +16,7 @@
 
 - [x] 3.1 `src/question-set/vite-plugin.ts` に `kakuzukeQuestions()` と `loadQuestionSet()` を実装する（design の Decisions 4。dev では誤りを `load` で投げる）。`virtual:kakuzuke/*` の型宣言を置き、写真は `content/images/` から、指定されたものだけをハッシュ名で出力する（dev は対応表から配信）。`content/questions.yaml` に例の問題 3 問（pick 2 問・order 1 問、説明に価格を含めない）と、`content/images/` に仮の写真と、どこからも指定しない画像 1 枚を置く。検証: `pnpm build` が通り、`dist/client/images/` に指定した写真だけがハッシュ名で出力され、元のファイル名がどこにも現れない。`KAKUZUKE_CONTENT_DIR` で誤りを 3 種含むフィクスチャを指定して `pnpm dev` を起動し、`/` のエラーオーバーレイに 3 件すべてが出て、正しいフィクスチャに戻すと表示が回復する
 - [x] 3.2 `src/host/host-data.functions.ts`（`getHostQuestionSet`、handler 内で `virtual:kakuzuke/answers` を動的 import）と、`/` が `virtual:kakuzuke/public`、`/host` が loader の値を使う仮の画面を作る（`/host` は解説を表示しない。正解は埋め込みデータだけに入る状態にする）。`tests/build/plugin.test.ts`（design の Decisions 6 の 6）を書く。design の Risks のうち環境名・handler の除去・`host/index.html` への埋め込みを確定させ、結果を design.md に追記する。検証: `pnpm build` が通り、`plugin.test.ts` の 3 件が通る
-- [ ] 3.3 `tests/leak.ts`（復号してから探す検出器と、その正規化の単体テスト）、参加者画面の `LEAK_CANARY`、`tests/build/leak.test.ts`（design の Decisions 6 の 1〜5）を書き、`package.json` の `build` を `vite build && vitest run --project build` にする。検証: `pnpm build` が通る。`/` に解説の文字列を一時的に描画すると `pnpm build` が本検査で失敗し、戻すと通る
+- [x] 3.3 `tests/leak.ts`（復号してから探す検出器と、その正規化の単体テスト）、参加者画面の `LEAK_CANARY`、`tests/build/leak.test.ts`（design の Decisions 6 の 1〜5）を書き、`package.json` の `build` を `vite build && vitest run --project build` にする。検証: `pnpm build` が通る。`/` に解説の文字列を一時的に描画すると `pnpm build` が本検査で失敗し、戻すと通る
 
 ## 4. 司会画面
 
