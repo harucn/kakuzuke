@@ -25,7 +25,7 @@
 - [x] 4.3 テーマ（`src/styles/`。モックの配色・DotGothic16・ドット枠、文字と背景の配色の組の一覧）と `src/ui/OptionCard.tsx` を作る。`tests/unit/theme.test.ts` で配色の組のコントラスト比がすべて 4.5:1 以上であることを確かめる。検証: `pnpm test && pnpm build` が通る
 - [x] 4.4 `src/host/HostScreen.tsx` の表示と移動を作る（16:9、問題番号・問題名・説明・選択肢、画面内の ◀・▶、`installHostKeys` の接続、次の問題の写真の先読み）。E2E のフィクスチャ `tests/fixtures/content/` を作り、host-screen spec の「問題の表示」「前後の問題への移動」「キーボード操作」の Scenario を `tests/e2e/host.spec.ts` に書く。検証: `pnpm e2e` が通る
 - [x] 4.5 正解発表を作る（正解発表ボタン、`revealView` の表示、`<Celebration key={run}>` と `<Stamp key={run}>`、reduced motion）。host-screen spec の「pick の正解発表」「order の正解発表」「正解発表の再演出」の Scenario を `tests/e2e/host.spec.ts` に足す。検証: `pnpm e2e` が通る
-- [ ] 4.6 再読み込みの復元（`booting` の間は問題部分を描画しない）と全画面ボタンを作る。host-screen spec の「再読み込みで同じ問題に戻る」「全画面表示」の Scenario を `tests/e2e/host.spec.ts` に足す。検証: `pnpm e2e` が通る
+- [x] 4.6 再読み込みの復元（`booting` の間は問題部分を描画しない）と全画面ボタンを作る。host-screen spec の「再読み込みで同じ問題に戻る」「全画面表示」の Scenario を `tests/e2e/host.spec.ts` に足す。検証: `pnpm e2e` が通る
 
 ## 5. 参加者画面
 

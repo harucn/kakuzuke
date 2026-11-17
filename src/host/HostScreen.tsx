@@ -1,11 +1,13 @@
-import { useEffect, useReducer, type Dispatch } from "react";
+import { useEffect, useReducer, useRef, type Dispatch } from "react";
 import { preload } from "react-dom";
 import { boundsOf, positionText } from "../deck/cursor.ts";
 import type { Question } from "../question-set/model.ts";
 import { OptionCard } from "../ui/OptionCard.tsx";
 import { Celebration } from "./Celebration.tsx";
+import { toggleFullscreen, useIsFullscreen } from "./fullscreen.ts";
 import { installHostKeys } from "./keymap.ts";
 import { initialHostState, step, type HostEvent, type HostState } from "./machine.ts";
+import { loadIndex, saveIndex } from "./restore.ts";
 import { revealView, type RevealedOption } from "./reveal.ts";
 
 /** /host の loader の値。ブランドは createServerFn の直列化を通らないので持たない（design の Risks 確定（3.2）） */
@@ -16,11 +18,20 @@ type ShownState = Exclude<HostState, { readonly phase: "booting" }>;
 export function HostScreen({ set }: { readonly set: HostQuestionSet }) {
   const [state, dispatch] = useReducer((s: HostState, e: HostEvent) => step(s, e, set.length), initialHostState);
   useEffect(() => installHostKeys(window, dispatch), []);
-  useEffect(() => dispatch({ type: "restore", index: null }), []);
+  useEffect(() => dispatch({ type: "restore", index: loadIndex(set.length) }), [set.length]);
+  const index = state.phase === "booting" ? null : state.index;
+  useEffect(() => {
+    if (index !== null) saveIndex(index);
+  }, [index]);
+  // 全画面にするのは枠ではなくページ全体。枠の 16:9 の寸法計算をそのまま使えて、画面の比が 16:9 でなくても崩れない
+  const stage = useRef<HTMLElement>(null);
+  const onFullscreen = () => void toggleFullscreen(stage.current!);
 
   return (
-    <main className="host-stage" aria-label="司会画面">
-      <div className="host px">{state.phase !== "booting" && <Stage set={set} state={state} dispatch={dispatch} />}</div>
+    <main ref={stage} className="host-stage" aria-label="司会画面">
+      <div className="host px">
+        {state.phase !== "booting" && <Stage set={set} state={state} dispatch={dispatch} onFullscreen={onFullscreen} />}
+      </div>
     </main>
   );
 }
@@ -29,11 +40,14 @@ function Stage({
   set,
   state,
   dispatch,
+  onFullscreen,
 }: {
   readonly set: HostQuestionSet;
   readonly state: ShownState;
   readonly dispatch: Dispatch<HostEvent>;
+  readonly onFullscreen: () => void;
 }) {
+  const fullscreen = useIsFullscreen();
   const { index } = state;
   const question = set[index];
   const { canPrev, canNext } = boundsOf(index, set.length);
@@ -86,6 +100,9 @@ function Stage({
           </button>
           <button type="button" className="btn px" aria-label="次へ" disabled={!canNext} onClick={() => dispatch({ type: "next" })}>
             ▶
+          </button>
+          <button type="button" className="btn btn-sq px" aria-label="全画面" aria-pressed={fullscreen} onClick={onFullscreen}>
+            ⛶
           </button>
         </div>
       </div>

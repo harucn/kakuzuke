@@ -1,5 +1,6 @@
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+import { STORAGE_KEY } from "../../src/host/restore.ts";
 import { answerOf, secretStrings, type Answer, type Label } from "../../src/question-set/model.ts";
 import { loadQuestionSet } from "../../src/question-set/vite-plugin.ts";
 
@@ -11,6 +12,7 @@ const last = set.length - 1;
 const prevButton = (page: Page) => page.getByRole("button", { name: "前へ" });
 const nextButton = (page: Page) => page.getByRole("button", { name: "次へ" });
 const revealButton = (page: Page) => page.getByRole("button", { name: "正解発表" });
+const fullscreenButton = (page: Page) => page.getByRole("button", { name: "全画面" });
 const card = (page: Page, label: Label) => page.locator(`.option-card[data-label="${label}"]`);
 const stamp = (page: Page) => page.getByTestId("stamp");
 const celebration = (page: Page) => page.getByTestId("celebration");
@@ -126,6 +128,77 @@ test.describe("前後の問題への移動", () => {
     await expectAsking(page, 1);
     await prevButton(page).click();
     await expectAsking(page, 0);
+  });
+});
+
+test.describe("再読み込みで同じ問題に戻る", () => {
+  test("第 3 問で再読み込みすると第 3 問に戻る", async ({ page }) => {
+    await openHost(page);
+    await goTo(page, 2);
+    await page.reload();
+    await expectAsking(page, 2);
+  });
+
+  test("正解発表後に再読み込みすると発表前の状態に戻る", async ({ page }) => {
+    await openHost(page);
+    await goTo(page, 1);
+    await revealButton(page).click();
+    await expect(page.getByText(set[1].explanation)).toBeVisible();
+    await page.reload();
+    await expectAsking(page, 1);
+  });
+
+  test("問題数が減った後の再読み込みでは範囲内の問題を表示する", async ({ page }) => {
+    await openHost(page);
+    // 問題数が減ったセットのデプロイは、保存された位置が今の問題数を超えている状態として作る
+    await page.evaluate((key) => sessionStorage.setItem(key, "99"), STORAGE_KEY);
+    await page.reload();
+    await expectAsking(page, last);
+  });
+});
+
+const isFullscreen = (page: Page) => page.evaluate(() => document.fullscreenElement !== null);
+
+test.describe("全画面表示", () => {
+  test("全画面ボタンで全画面表示になる", async ({ page }) => {
+    await openHost(page);
+    await fullscreenButton(page).click();
+    await expect.poll(() => isFullscreen(page)).toBe(true);
+    await expect(fullscreenButton(page)).toHaveAttribute("aria-pressed", "true");
+    await expectAsking(page, 0);
+  });
+
+  test("全画面表示中に全画面ボタンで元に戻る", async ({ page }) => {
+    await openHost(page);
+    await fullscreenButton(page).click();
+    await expect.poll(() => isFullscreen(page)).toBe(true);
+    await fullscreenButton(page).click();
+    await expect.poll(() => isFullscreen(page)).toBe(false);
+    await expect(fullscreenButton(page)).toHaveAttribute("aria-pressed", "false");
+  });
+
+  test("全画面表示が拒否されても操作を続けられる", async ({ page }) => {
+    const errors: Error[] = [];
+    page.on("pageerror", (e) => errors.push(e));
+    await page.addInitScript(() => {
+      const w = window as typeof window & { fullscreenRequests: number };
+      w.fullscreenRequests = 0;
+      Element.prototype.requestFullscreen = () => {
+        w.fullscreenRequests++;
+        return Promise.reject(new Error("denied"));
+      };
+    });
+    await openHost(page);
+    await fullscreenButton(page).click();
+    await expect.poll(() => page.evaluate(() => (window as typeof window & { fullscreenRequests: number }).fullscreenRequests)).toBe(1);
+    expect(await isFullscreen(page)).toBe(false);
+    await nextButton(page).click();
+    await expectAsking(page, 1);
+    await prevButton(page).click();
+    await expectAsking(page, 0);
+    await revealButton(page).click();
+    await expect(page.getByText(set[0].explanation)).toBeVisible();
+    expect(errors).toEqual([]);
   });
 });
 

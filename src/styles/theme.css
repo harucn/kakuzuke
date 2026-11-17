@@ -278,3 +278,10 @@ body {
   font-size: 1.8cqw;
   padding: 0.8cqw 1.4cqw;
 }
+.host-btns .btn-sq {
+  padding: 0.8cqw 1cqw;
+}
+/* 全画面の対象はページ全体（HostScreen）。既定の黒い backdrop が枠の周りに見えないよう地の色を塗る */
+.host-stage:fullscreen {
+  background: var(--cream);
+}
