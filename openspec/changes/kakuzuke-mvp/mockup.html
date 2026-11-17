@@ -1,0 +1,299 @@
+<title>格付けチェック画面モック</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Silkscreen:wght@400;700&display=swap">
+<style>
+/* Layout: 投影用 16:9 の司会画面と、スマホ枠の参加者画面を横に並べる（狭い画面では縦積み）。
+   明るい会場向けの単一テーマ（クリーム地 × 味道園グリーン × 赤）。意図的にダークモードは持たない。 */
+:root {
+  --cream: #FFF8E7;
+  --paper: #FFFDF6;
+  --green: #0B5A1E;
+  --green-deep: #063A12;
+  --green-soft: #DCEBD6;
+  --red: #D62828;
+  --ink: #1C2A1E;
+  --mute: #6B7A6C;
+  --dot: "DotGothic16", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  --label: "Silkscreen", "DotGothic16", monospace;
+  --px: 4px;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--dot);
+  font-size: 16px;
+  line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 48px;
+  background-image: radial-gradient(var(--green-soft) 1px, transparent 1px);
+  background-size: 12px 12px;
+}
+.page { max-width: 1240px; margin: 0 auto; display: grid; gap: 24px; }
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; }
+header.top h1 { font-size: 22px; margin: 0; color: var(--green-deep); letter-spacing: .04em; }
+header.top p { margin: 0; color: var(--mute); font-size: 14px; }
+
+/* ドット枠: 角を 1 ドット欠いた枠を box-shadow で描く */
+.px {
+  background: var(--paper);
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--c, var(--green)),
+    0 var(--px) 0 0 var(--c, var(--green)),
+    calc(var(--px) * -1) 0 0 0 var(--c, var(--green)),
+    var(--px) 0 0 0 var(--c, var(--green));
+}
+
+.stage { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+@media (max-width: 900px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+.cap { font-family: var(--label); font-size: 12px; letter-spacing: .12em; color: var(--green); margin: 0 0 10px; text-transform: uppercase; }
+
+/* 司会画面 */
+.host { aspect-ratio: 16 / 9; max-width: 100%; container-type: inline-size; position: relative; overflow: hidden; padding: 3cqw 4cqw; display: grid; grid-template-rows: auto auto 1fr auto; gap: 1.6cqw; }
+.host .bar { display: flex; justify-content: space-between; align-items: center; font-family: var(--label); color: var(--green); font-size: 1.6cqw; letter-spacing: .1em; }
+.host .bar .hearts { color: var(--red); letter-spacing: .3em; }
+.host h2 { margin: 0; font-size: 4.4cqw; line-height: 1.2; color: var(--green-deep); text-wrap: balance; font-weight: 400; }
+.host h2 small { display: block; font-family: var(--label); font-size: 1.8cqw; color: var(--red); letter-spacing: .14em; margin-bottom: .6cqw; }
+.opts { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3cqw; min-height: 0; }
+.opt { --c: var(--green); position: relative; display: grid; grid-template-rows: 1fr auto; padding: 1cqw; gap: 1cqw; min-height: 0; transition: opacity .3s; }
+.opt .ph { min-height: 0; display: grid; place-items: center; text-align: center; color: var(--green); font-size: 1.5cqw;
+  background:
+    repeating-conic-gradient(var(--green-soft) 0 25%, var(--paper) 0 50%) 0 0 / 2cqw 2cqw; }
+.opt .ph span { background: var(--paper); padding: .4cqw 1cqw; }
+.opt .lb { font-family: var(--label); font-weight: 700; text-align: center; font-size: 3.4cqw; color: var(--paper); background: var(--green); line-height: 1.3; }
+.opt.dim { opacity: .35; }
+.opt.win { --c: var(--red); }
+.opt.win .lb { background: var(--red); }
+.stamp { position: absolute; top: 18%; left: 50%; translate: -50% 0; rotate: -8deg; font-size: 4.2cqw; color: var(--red); background: var(--paper);
+  padding: .3cqw 1.4cqw; box-shadow: 0 0 0 .5cqw var(--red); white-space: nowrap; }
+.stamp[hidden] { display: none; }
+@media (prefers-reduced-motion: no-preference) { .stamp.blink { animation: blink .5s steps(1) 4; } }
+@keyframes blink { 50% { opacity: 0; } }
+
+.msg { --c: var(--green-deep); background: var(--green-deep); color: var(--paper); padding: 1.2cqw 2cqw; font-size: 2.1cqw; min-height: 7.5cqw; line-height: 1.5; }
+.msg .who { color: #FFD7D7; margin-right: .6em; }
+.msg .caret { display: inline-block; width: .6em; height: 1em; background: var(--paper); vertical-align: -.1em; margin-left: .2em; }
+@media (prefers-reduced-motion: no-preference) { .msg .caret { animation: blink 1s steps(1) infinite; } }
+.hfoot { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2cqw; align-items: stretch; }
+.hbtns { display: flex; gap: 1.2cqw; align-items: center; }
+.hbtns button { font-size: 1.8cqw; padding: .8cqw 1.4cqw; }
+.hbtns button.sq { padding: .8cqw 1cqw; }
+.host:fullscreen { width: 100vw; height: 100vh; aspect-ratio: auto; }
+.tag { position: absolute; left: 1.6cqw; right: 1.6cqw; top: 1.6cqw; background: var(--paper); color: var(--ink); box-shadow: 0 0 0 .3cqw var(--c); font-size: 1.6cqw; line-height: 1.35; padding: .4cqw .8cqw; text-align: center; }
+.tag b { color: var(--red); font-weight: 400; margin-right: .4em; }
+.tag[hidden] { display: none; }
+.stamp { top: 42%; }
+canvas.fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; image-rendering: pixelated; }
+
+/* 操作ボタン */
+.ctl { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+button { font: inherit; font-size: 16px; cursor: pointer; border: 0; padding: 10px 18px; color: var(--green-deep); --c: var(--green); }
+button.px { background: var(--paper); }
+button.go { background: var(--red); color: var(--paper); --c: var(--red); }
+button:hover { filter: brightness(1.06); translate: 0 -1px; }
+button:focus-visible { outline: 3px dashed var(--red); outline-offset: 6px; }
+button:disabled { opacity: .4; cursor: default; translate: none; }
+
+/* 参加者画面（スマホ） */
+.phone { max-width: 340px; width: 100%; margin: 0 auto; padding: 14px; --c: var(--green-deep); background: var(--green-deep); }
+.screen { background: var(--cream); padding: 16px 14px; display: grid; gap: 12px; }
+.screen .bar { display: flex; justify-content: space-between; font-family: var(--label); font-size: 11px; color: var(--green); letter-spacing: .1em; }
+.screen h3 { margin: 0; font-size: 22px; font-weight: 400; color: var(--green-deep); line-height: 1.3; }
+.screen h3 small { display: block; font-family: var(--label); font-size: 11px; color: var(--red); letter-spacing: .14em; }
+.screen p.desc { margin: 0; font-size: 14px; }
+.screen .list { display: grid; gap: 12px; }
+.screen .opt { grid-template-rows: 130px auto; padding: 6px; gap: 6px; }
+.screen .opt .ph { font-size: 12px; background-size: 14px 14px; }
+.screen .opt .lb { font-size: 18px; }
+.screen .nav { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.screen .nav button { font-size: 15px; padding: 10px 0; }
+.note { font-size: 13px; color: var(--mute); margin: 12px 0 0; max-width: 34em; }
+
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.legend > div { padding: 14px 16px; font-size: 14px; }
+.legend h4 { margin: 0 0 6px; font-family: var(--label); font-size: 12px; letter-spacing: .12em; color: var(--green); }
+.legend p { margin: 0; }
+.sw { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.sw i { display: inline-flex; align-items: center; gap: 6px; font-style: normal; font-size: 12px; }
+.sw i::before { content: ""; width: 16px; height: 16px; background: var(--s); box-shadow: 0 0 0 2px var(--ink); }
+</style>
+
+<div class="page">
+  <header class="top">
+    <h1>格付けチェック 画面モック</h1>
+    <p>結婚式二次会用。問題と写真は例です。</p>
+  </header>
+
+  <div class="stage">
+    <section aria-label="司会画面">
+      <p class="cap">Host screen / 投影用 16:9</p>
+      <div class="host px" id="host">
+        <div class="bar"><span id="h-stage">STAGE 1 / 3</span><span class="hearts" aria-hidden="true">♥ ♥ ♥</span></div>
+        <h2 id="h-title"><small>STAGE 1</small>ワイン</h2>
+        <div class="opts" id="h-opts"></div>
+        <div class="hfoot">
+          <div class="msg px" id="h-msg" aria-live="polite"></div>
+          <div class="hbtns">
+            <button class="px" id="h-prev" aria-label="前の問題">◀</button>
+            <button class="go px" id="h-reveal">正解発表</button>
+            <button class="px" id="h-next" aria-label="次の問題">▶</button>
+            <button class="px sq" id="h-full" aria-label="全画面">⛶</button>
+          </div>
+        </div>
+        <canvas class="fx" id="fx" aria-hidden="true"></canvas>
+      </div>
+      <p class="note">操作ボタンは投影画面の右下にあります。キーボードとプレゼン用リモコンでも操作でき、← と PageUp で前へ、→ と PageDown で次へ、Space と Enter で正解発表です。STAGE 2 は「全部当てる」形式の案です。</p>
+    </section>
+
+    <section aria-label="参加者画面">
+      <p class="cap">Guest screen / スマホ</p>
+      <div class="phone px">
+        <div class="screen">
+          <div class="bar"><span id="g-stage">STAGE 1 / 3</span><span>KAKUZUKE</span></div>
+          <h3 id="g-title"></h3>
+          <p class="desc" id="g-desc"></p>
+          <div class="list" id="g-opts"></div>
+          <div class="nav">
+            <button class="px" id="g-prev">◀ 前へ</button>
+            <button class="px" id="g-next">次へ ▶</button>
+          </div>
+        </div>
+      </div>
+      <p class="note">参加者画面のデータには正解と解説の項目がありません（段階 1）。</p>
+    </section>
+  </div>
+
+  <div class="legend">
+    <div class="px"><h4>Color</h4><p>看板の緑を枠と見出しに、赤を正解と操作に使います。</p>
+      <div class="sw"><i style="--s: var(--green)">緑</i><i style="--s: var(--green-deep)">深緑</i><i style="--s: var(--red)">赤</i><i style="--s: var(--cream)">クリーム</i></div></div>
+    <div class="px"><h4>Type</h4><p>日本語はドットフォント DotGothic16、英字ラベルは Silkscreen です。</p></div>
+    <div class="px"><h4>Color-safe</h4><p>正解は色だけでなく「正解！」の印と枠の太さでも示します。選択肢は A/B/C の文字で区別します。</p></div>
+  </div>
+</div>
+
+<script>
+// 将来の questions.ts と同じ形の例データ。画像名は正解がわからない名前にする。
+// mode: "pick" は高いものを 1 つ当てる、"order" は全部の順位を当てる。正解は各選択肢の rank から決まる。
+const QUESTIONS = [
+  { mode: "pick", title: "ワイン", description: "高いワインはどちら？",
+    options: [{ label: "A", image: "q1-a.jpg", rank: 2, name: "テーブルワイン", price: "1本 1,000円" },
+              { label: "B", image: "q1-b.jpg", rank: 1, name: "ボルドーの赤", price: "1本 5万円" }],
+    explanation: "B は 1本 5万円のボルドー。A はスーパーで買えるテーブルワインでした。" },
+  { mode: "order", title: "焼肉", description: "高い順に A・B・C を並べてください。",
+    options: [{ label: "A", image: "q2-a.jpg", rank: 1, name: "A5 和牛サーロイン", price: "100g 3,000円" },
+              { label: "B", image: "q2-b.jpg", rank: 3, name: "輸入牛", price: "100g 300円" },
+              { label: "C", image: "q2-c.jpg", rank: 2, name: "国産牛", price: "100g 900円" }],
+    explanation: "A5 和牛と国産牛の差は脂の甘さ。輸入牛は赤身の歯ごたえで見分けられます。" },
+  { mode: "pick", title: "チョコレート", description: "専門店のチョコはどちら？",
+    options: [{ label: "A", image: "q3-a.jpg", rank: 1, name: "専門店のボンボン", price: "1粒 800円" },
+              { label: "B", image: "q3-b.jpg", rank: 2, name: "板チョコを固め直したもの", price: "1粒 約20円" }],
+    explanation: "A が専門店の 1粒 800円。B はコンビニの板チョコを溶かして固め直したものです。" },
+];
+// 参加者向けの射影。順位・銘柄・価格・解説を持たせない。
+const toPublic = ({ mode, title, description, options }) =>
+  ({ mode, title, description, options: options.map(({ label, image }) => ({ label, image })) });
+const PUBLIC = QUESTIONS.map(toPublic);
+
+const $ = (id) => document.getElementById(id);
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const total = QUESTIONS.length;
+let hi = 0, revealed = false, gi = 0, typing;
+
+function optEl(o) {
+  const d = document.createElement("div");
+  d.className = "opt px";
+  d.dataset.label = o.label;
+  d.innerHTML = `<div class="ph"><span>写真 ${o.label}<br>${o.image}</span></div><div class="lb">${o.label}</div><div class="tag" hidden></div><div class="stamp" hidden>正解！</div>`;
+  return d;
+}
+function type(el, who, text) {
+  clearInterval(typing);
+  el.innerHTML = `<span class="who">${who}</span><span class="t"></span><span class="caret"></span>`;
+  const t = el.querySelector(".t");
+  if (reduce) { t.textContent = text; return; }
+  let i = 0;
+  typing = setInterval(() => { t.textContent = text.slice(0, ++i); if (i >= text.length) clearInterval(typing); }, 45);
+}
+function renderHost() {
+  const q = QUESTIONS[hi];
+  revealed = false;
+  $("h-stage").textContent = `STAGE ${hi + 1} / ${total}`;
+  $("h-title").innerHTML = `<small>STAGE ${hi + 1}</small>${q.title}`;
+  const box = $("h-opts"); box.replaceChildren(...q.options.map(optEl));
+  type($("h-msg"), "Q.", q.description);
+  $("h-prev").disabled = hi === 0; $("h-next").disabled = hi === total - 1;
+  $("h-reveal").disabled = false;
+}
+function reveal() {
+  if (revealed) return;
+  revealed = true;
+  const q = QUESTIONS[hi];
+  const byLabel = Object.fromEntries(q.options.map((o) => [o.label, o]));
+  for (const el of $("h-opts").children) {
+    const o = byLabel[el.dataset.label], win = o.rank === 1;
+    el.classList.toggle("win", win);
+    el.classList.toggle("dim", q.mode === "pick" && !win);
+    const tag = el.querySelector(".tag");
+    tag.innerHTML = `${q.mode === "order" ? `<b>${o.rank}位</b>` : ""}${o.name}<br>${o.price}`;
+    tag.hidden = false;
+    const s = el.querySelector(".stamp"); s.hidden = !win; if (win) s.classList.add("blink");
+  }
+  const head = q.mode === "order"
+    ? `正解は ${[...q.options].sort((a, b) => a.rank - b.rank).map((o) => o.label).join(" → ")}！`
+    : `正解は ${q.options.find((o) => o.rank === 1).label}！`;
+  type($("h-msg"), head, q.explanation);
+  $("h-reveal").disabled = true;
+  confetti();
+}
+function renderGuest() {
+  const q = PUBLIC[gi];
+  $("g-stage").textContent = `STAGE ${gi + 1} / ${total}`;
+  $("g-title").innerHTML = `<small>STAGE ${gi + 1}</small>${q.title}`;
+  $("g-desc").textContent = q.description;
+  $("g-opts").replaceChildren(...q.options.map(optEl));
+  $("g-prev").disabled = gi === 0; $("g-next").disabled = gi === total - 1;
+}
+
+// ドットのハート紙吹雪
+const HEART = ["0110110", "1111111", "1111111", "0111110", "0011100", "0001000"];
+function confetti() {
+  if (reduce) return;
+  const cv = $("fx"), host = $("host");
+  const S = 4, W = Math.floor(host.clientWidth / S), H = Math.floor(host.clientHeight / S);
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext("2d");
+  const cols = ["#D62828", "#0B5A1E", "#F28B8B"];
+  const ps = Array.from({ length: 28 }, () => ({ x: Math.random() * W, y: -Math.random() * H * .6, v: .4 + Math.random() * .8, c: cols[Math.floor(Math.random() * 3)] }));
+  let f = 0;
+  (function tick() {
+    ctx.clearRect(0, 0, W, H);
+    for (const p of ps) {
+      p.y += p.v;
+      HEART.forEach((row, ry) => [...row].forEach((b, rx) => { if (b === "1") { ctx.fillStyle = p.c; ctx.fillRect(Math.round(p.x) + rx, Math.round(p.y) + ry, 1, 1); } }));
+    }
+    if (++f < 260) requestAnimationFrame(tick); else ctx.clearRect(0, 0, W, H);
+  })();
+}
+
+$("h-prev").onclick = () => { if (hi > 0) { hi--; renderHost(); } };
+$("h-next").onclick = () => { if (hi < total - 1) { hi++; renderHost(); } };
+$("h-reveal").onclick = reveal;
+$("h-full").onclick = () => {
+  const h = $("host");
+  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+  else h.requestFullscreen?.().catch(() => {});
+};
+document.addEventListener("keydown", (e) => {
+  if (e.target.closest?.("#g-prev, #g-next")) return;
+  if (["ArrowRight", "PageDown"].includes(e.key)) { e.preventDefault(); $("h-next").click(); }
+  else if (["ArrowLeft", "PageUp"].includes(e.key)) { e.preventDefault(); $("h-prev").click(); }
+  else if ((e.key === " " || e.key === "Enter") && !e.target.closest?.("button")) { e.preventDefault(); reveal(); }
+});
+$("g-prev").onclick = () => { if (gi > 0) { gi--; renderGuest(); } };
+$("g-next").onclick = () => { if (gi < total - 1) { gi++; renderGuest(); } };
+renderHost(); renderGuest();
+</script>
