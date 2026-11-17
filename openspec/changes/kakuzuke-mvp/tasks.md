@@ -22,7 +22,7 @@
 
 - [x] 4.1 `src/host/machine.ts`（`booting` と `restore` を含む `step`）、`src/host/reveal.ts`（`revealView`。pick・order とも rank 1 に正解の印）、`src/host/restore.ts`（`readStoredIndex`）を実装する。`tests/unit/` で、booting 中の操作の無視、移動で発表前に戻ること、reveal の `run` の加算と正解情報の不変、restore の丸め、`readStoredIndex` が整数でない値・負の値・空を null にすることを確かめる。検証: `pnpm test` が通る
 - [x] 4.2 `src/host/keymap.ts` に `HOST_KEYS`、`keyToHostEvent`、`installHostKeys` を実装する。6 キーの対応と、押しっぱなし・IME 変換中・修飾キー付きの無視を `tests/unit/keymap.test.ts` で確かめる。検証: `pnpm test` が通る
-- [ ] 4.3 テーマ（`src/styles/`。モックの配色・DotGothic16・ドット枠、文字と背景の配色の組の一覧）と `src/ui/OptionCard.tsx` を作る。`tests/unit/theme.test.ts` で配色の組のコントラスト比がすべて 4.5:1 以上であることを確かめる。検証: `pnpm test && pnpm build` が通る
+- [x] 4.3 テーマ（`src/styles/`。モックの配色・DotGothic16・ドット枠、文字と背景の配色の組の一覧）と `src/ui/OptionCard.tsx` を作る。`tests/unit/theme.test.ts` で配色の組のコントラスト比がすべて 4.5:1 以上であることを確かめる。検証: `pnpm test && pnpm build` が通る
 - [ ] 4.4 `src/host/HostScreen.tsx` の表示と移動を作る（16:9、問題番号・問題名・説明・選択肢、画面内の ◀・▶、`installHostKeys` の接続、次の問題の写真の先読み）。E2E のフィクスチャ `tests/fixtures/content/` を作り、host-screen spec の「問題の表示」「前後の問題への移動」「キーボード操作」の Scenario を `tests/e2e/host.spec.ts` に書く。検証: `pnpm e2e` が通る
 - [ ] 4.5 正解発表を作る（正解発表ボタン、`revealView` の表示、`<Celebration key={run}>` と `<Stamp key={run}>`、reduced motion）。host-screen spec の「pick の正解発表」「order の正解発表」「正解発表の再演出」の Scenario を `tests/e2e/host.spec.ts` に足す。検証: `pnpm e2e` が通る
 - [ ] 4.6 再読み込みの復元（`booting` の間は問題部分を描画しない）と全画面ボタンを作る。host-screen spec の「再読み込みで同じ問題に戻る」「全画面表示」の Scenario を `tests/e2e/host.spec.ts` に足す。検証: `pnpm e2e` が通る

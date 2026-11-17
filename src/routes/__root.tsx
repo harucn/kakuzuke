@@ -1,5 +1,7 @@
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import themeCss from "../styles/theme.css?url";
+import { FONT_STYLESHEET, cssVariables } from "../styles/tokens.ts";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -8,6 +10,13 @@ export const Route = createRootRoute({
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "kakuzuke" },
     ],
+    links: [
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      { rel: "stylesheet", href: FONT_STYLESHEET },
+      { rel: "stylesheet", href: themeCss },
+    ],
+    styles: [{ children: cssVariables }],
   }),
   shellComponent: RootDocument,
 });
