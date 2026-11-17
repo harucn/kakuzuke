@@ -29,7 +29,7 @@
 
 ## 5. 参加者画面
 
-- [ ] 5.1 `src/guest/GuestScreen.tsx` を作る（`OptionCard` と `cursor` を共有、正解発表の操作なし、キー操作なし）。guest-screen spec の「問題の表示」「前後の問題への移動」「正解情報を表示しない」「スマホでの表示」の Scenario を `tests/e2e/guest.spec.ts` に書く。検証: `pnpm e2e` が通る
+- [x] 5.1 `src/guest/GuestScreen.tsx` を作る（`OptionCard` と `cursor` を共有、正解発表の操作なし、キー操作なし）。guest-screen spec の「問題の表示」「前後の問題への移動」「正解情報を表示しない」「スマホでの表示」の Scenario を `tests/e2e/guest.spec.ts` に書く。検証: `pnpm e2e` が通る
 
 ## 6. 実データでの統合確認
 
