@@ -4,7 +4,7 @@
 
 ## 1. 雛形
 
-- [ ] 1.1 TanStack Start + Cloudflare Workers の雛形を pnpm で作る（`vite.config.ts` のプラグイン順は design の Context、`wrangler.jsonc` は `main: "@tanstack/react-start/server-entry"` と `assets.html_handling: "drop-trailing-slash"`、`prerender.enabled: true`）。`/` と `/host` に仮の文字だけのルートを置く。`package.json` に `test`（`vitest run --project unit`）・`build`・`e2e`（`pnpm build && playwright test`）・`deploy` を定義し、Vitest は `unit` と `build` の 2 プロジェクト（`passWithNoTests`）、Playwright は `webServer: vite preview`（`BASE_URL` があるときは使わない）にする。仮の E2E で `GET /host` が転送なしで 200 の HTML を返すことを確かめる。検証: `pnpm test && pnpm e2e && pnpm exec wrangler deploy --dry-run` が通り、`dist/client/index.html` と `dist/client/host/index.html` が存在する。design の Risks のうち `pages` の位置と `/host` の 200 を確定させ、結果を design.md に追記する
+- [x] 1.1 TanStack Start + Cloudflare Workers の雛形を pnpm で作る（`vite.config.ts` のプラグイン順は design の Context、`wrangler.jsonc` は `main: "@tanstack/react-start/server-entry"` と `assets.html_handling: "drop-trailing-slash"`、`prerender.enabled: true`）。`/` と `/host` に仮の文字だけのルートを置く。`package.json` に `test`（`vitest run --project unit`）・`build`・`e2e`（`pnpm build && playwright test`）・`deploy` を定義し、Vitest は `unit` と `build` の 2 プロジェクト（`passWithNoTests`）、Playwright は `webServer: vite preview`（`BASE_URL` があるときは使わない）にする。仮の E2E で `GET /host` が転送なしで 200 の HTML を返すことを確かめる。検証: `pnpm test && pnpm e2e && pnpm exec wrangler deploy --dry-run` が通り、`dist/client/index.html` と `dist/client/host/index.html` が存在する。design の Risks のうち `pages` の位置と `/host` の 200 を確定させ、結果を design.md に追記する
 
 ## 2. 問題データのドメインモデルと検証
 

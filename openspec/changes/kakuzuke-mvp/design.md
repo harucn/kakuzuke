@@ -315,6 +315,9 @@ tests/unit/ tests/build/ tests/e2e/ tests/fixtures/content/
 - [正解が `dist/client/host/index.html` に埋め込まれない] → 陽性対照 1 が失敗して気づける。タスク 3.2・3.3 で確定。
 - [`tanstackStart` の prerender で、`pages` を置く位置（`prerender` の中か外か）が違う] → `host/index.html` が生成されなければ 1.1 の検証で気づける。自動検出だけで両ルートが出るなら `pages` は書かない。タスク 1.1 で確定。
 - [`html_handling: "drop-trailing-slash"` でも `/host` が 200 にならない] → 1.1 の検証（`GET /host` が 200 の HTML）で気づける。代わりに TanStack Router の `trailingSlash` を `'always'` にして URL を `/host/` に揃える。タスク 1.1 で確定。
+- 確定（1.1）: `pages` は不要。`tanstackStart({ prerender: { enabled: true } })` だけで、`/` から `/host` へのリンクがなくても両ルートが自動検出され、`dist/client/index.html` と `dist/client/host/index.html` が出る。
+- 確定（1.1）: `wrangler.jsonc` の `assets.html_handling: "drop-trailing-slash"` は Cloudflare プラグインが生成する `dist/server/wrangler.json` に `directory: "../client"` と並んで引き継がれる。`vite preview` で `GET /host` は転送なしの 200（`etag` 付きの static asset）、`/host/` は `/host` への 307。対照として設定を外すと `/host` は `/host/` への 307 になる。
+- 確定（1.1）: ビルドの出力先は `dist/client`（static assets）と `dist/server`（Worker と生成された `wrangler.json`）。`dist/ssr` はない。`wrangler deploy` は `.wrangler/deploy/config.json` 経由で `dist/server/wrangler.json` を使う。
 
 ほかのリスク:
 
