@@ -33,7 +33,7 @@
 
 ## 6. 実データでの統合確認
 
-- [ ] 6.1 `tests/e2e/content.spec.ts`（design の Decisions 10 の表の最終行）を書く。実データの全問をボタンとキーそれぞれで最後まで進めて正解発表し、1920×1080 で溢れがないこと、司会画面で `/_serverFn/` へのリクエストが 0 件であること、参加者画面を進める間の応答に秘密文字列が 0 件で `/_serverFn/` へのリクエストも 0 件であることを確かめる。`BASE_URL` でデプロイ先にも向けられるようにする。検証: `pnpm e2e` が通る
+- [x] 6.1 `tests/e2e/content.spec.ts`（design の Decisions 10 の表の最終行）を書く。実データの全問をボタンとキーそれぞれで最後まで進めて正解発表し、1920×1080 で溢れがないこと、司会画面で `/_serverFn/` へのリクエストが 0 件であること、参加者画面を進める間の応答に秘密文字列が 0 件で `/_serverFn/` へのリクエストも 0 件であることを確かめる。`BASE_URL` でデプロイ先にも向けられるようにする。検証: `pnpm e2e` が通る
 - [ ] 6.2 `README.md` に問題と写真の追加手順（写真は `content/images/` に好きな名前で置いて `image` で指定すること、説明に価格を書かないこと）、`pnpm dev` / `pnpm test` / `pnpm build` / `pnpm e2e` / `pnpm run deploy`、司会画面と参加者画面の URL を書く。検証: README の手順どおりに例の問題を 1 問足して `pnpm e2e` が通る（確認後に戻す）
 - [ ] 6.3 Cloudflare にデプロイし、デプロイ先へ実データの E2E を流す（初回の `wrangler login` はユーザーが行う）。検証: `pnpm run deploy` が成功し、`BASE_URL=<デプロイ先> pnpm exec playwright test tests/e2e/content.spec.ts` が通る
 
