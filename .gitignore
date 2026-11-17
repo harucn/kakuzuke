@@ -3,4 +3,3 @@ dist
 .wrangler
 test-results
 playwright-report
-openspec/changes/**/decisions.tsv

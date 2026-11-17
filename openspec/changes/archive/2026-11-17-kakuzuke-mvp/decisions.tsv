@@ -1,0 +1,19 @@
+ts	phase	decision	why	evidence	result
+2026-11-17T01:42:37Z	scaffold	雛形は公式スキャフォールドをコピーせず最小構成を手で書いた	デモや 16k 行の型定義を持ち込まないため	package.json, vite.config.ts	pnpm test / e2e 2件 / wrangler dry-run 通過
+2026-11-17T01:42:37Z	scaffold	prerender は pages を書かず自動検出に任せた	自動検出だけで / と /host の HTML が出たため	dist/client/host/index.html, design.md Risks 確定（1.1）	確定
+2026-11-17T01:42:37Z	scaffold	html_handling を drop-trailing-slash にした	/host が 307 で /host/ に飛ばず 200 で返るため。外すと 307 になることを対照で確認	tests/e2e/smoke.spec.ts	GET /host 200
+2026-11-17T01:53:08Z	validate	検証を zod の形チェックと TS の横断規則の 2 段にした	zod の refine だと選択肢に形の誤りが 1 つあると rank 重複が報告されず、全件報告の spec を満たせないため	src/question-set/parse.ts, tests/unit/parse.test.ts 複数の誤り	39 tests green
+2026-11-17T01:53:08Z	validate	秘密の項目の定義を model.ts の secretFields 1 か所にまとめた	検証と漏洩走査で秘密の範囲がずれないようにするため	src/question-set/model.ts secretFields	tests green
+2026-11-17T02:10:17Z	compiler	写真は client 環境の generateBundle で指定分だけハッシュ名で出力した	事前レンダリングより前に dist/client/images に揃い、代替策が不要だったため	dist/client/images 7 件, design.md 確定（3.1）	build green, 元のファイル名 0 件
+2026-11-17T02:10:17Z	compiler	dev では誤りを仮想モジュールの load で投げ、サーバーは止めない	buildStart で投げると dev サーバーが起動しないため	curl /@id/__x00__virtual:kakuzuke/public で 3 件確認	誤り 3 件表示
+2026-11-17T02:10:17Z	compiler	元のファイル名の検査は host/index.html だけ拡張子付きで探すことにした	拡張子なしだと銘柄に誤一致し、作者の命名を縛る必要が出るため	design.md Decisions 6 の 4	design 更新
+2026-11-17T02:22:09Z	wall	サーバー関数の戻り値はブランドなしのタプルに広げ、HostScreen はその型を受け取ることにした	ブランド付きの型が createServerFn の直列化の型検査を通らないため。キャストは使わない	src/host/host-data.functions.ts	tsc green
+2026-11-17T02:22:09Z	wall	/ から /host へのクライアント遷移でだけサーバー関数が呼ばれることを許容した	/ に /host へのリンクはなく、司会は /host を直接開くため。直接開く場合と再読み込みは 0 件	design.md 確定（3.2）	6.1 の E2E とデプロイ先で 0 件を確認
+2026-11-17T02:36:59Z	leak	カナリアは参加者画面の data- 属性に描画した	描画される値は minify で消えず、参加者には見えず、JS と HTML の両方で陽性対照になるため	src/guest/leak-canary.ts	陽性対照 2 件 green、外すと失敗
+2026-11-17T02:36:59Z	leak	解説を参加者画面に描画するとビルドが本検査で失敗することを確かめた	検出器が本物の成果物で漏洩を拾えることの確認	index.html と assets/routes-*.js の 2 件を検出	fail→revert→green
+2026-11-17T02:47:15Z	theme	補足文の色 mute を #6B7A6C から #677668 に少し暗くした	モックの値はクリーム地で 4.29:1 で、spec の 4.5:1 に届かなかったため	src/styles/tokens.ts, tests/unit/theme.test.ts	最小 4.54:1
+2026-11-17T02:47:15Z	theme	配色は tokens.ts の 1 か所に置き、CSS 変数をそこから生成した	CSS と TS の 2 つの一覧を手で揃える必要をなくすため	src/styles/tokens.ts cssVariables	theme.test が直書きの色を禁止
+2026-11-17T02:59:02Z	host	pnpm e2e をフィクスチャのビルド→scenario、実データのビルド→content の 2 段にした	Scenario は固定データ、実データは全問検査を分けるため。最後の dist は実データ	package.json e2e, playwright.config.ts	scenario 13 / content 3 green
+2026-11-17T02:59:02Z	host	4.4 の段階で Space・Enter による発表の見出しと解説だけ先に出した	Space・Enter と発表後に戻る Scenario が発表の表示なしでは検査できないため。印や演出は 4.5	src/host/HostScreen.tsx	green
+2026-11-17T03:26:48Z	content	実データ E2E に選択肢カードごとの溢れ検査を足した	解説が約 290 字で写真が 0px に潰れても既存の検査が通ってしまったため	tests/e2e/content.spec.ts	約 400 字で失敗、戻して green
+2026-11-17T03:26:48Z	content	写真の最小サイズの検査は入れなかった	写真が小さくなる許容範囲は製品判断で、spec にないため	tests/e2e/content.spec.ts	ユーザーに報告済み（README で 100〜150 字を目安に案内）
