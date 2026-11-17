@@ -3,9 +3,10 @@ import { preload } from "react-dom";
 import { boundsOf, positionText } from "../deck/cursor.ts";
 import type { Question } from "../question-set/model.ts";
 import { OptionCard } from "../ui/OptionCard.tsx";
+import { Celebration } from "./Celebration.tsx";
 import { installHostKeys } from "./keymap.ts";
 import { initialHostState, step, type HostEvent, type HostState } from "./machine.ts";
-import { revealView } from "./reveal.ts";
+import { revealView, type RevealedOption } from "./reveal.ts";
 
 /** /host の loader の値。ブランドは createServerFn の直列化を通らないので持たない（design の Risks 確定（3.2）） */
 export type HostQuestionSet = readonly [Question, ...Question[]];
@@ -38,11 +39,11 @@ function Stage({
   const { canPrev, canNext } = boundsOf(index, set.length);
   for (const option of set[index + 1]?.options ?? []) preload(option.image, { as: "image" });
 
-  const revealed = state.phase === "revealed" ? revealView(question) : null;
+  const revealed = state.phase === "revealed" ? { view: revealView(question), run: state.run } : null;
   const message =
     revealed === null
       ? { who: "Q.", text: question.description }
-      : { who: revealed.headline, text: revealed.explanation };
+      : { who: `${revealed.view.headline}！`, text: revealed.view.explanation };
 
   return (
     <>
@@ -57,9 +58,18 @@ function Stage({
         {question.title}
       </h1>
       <div className="host-opts">
-        {question.options.map((o) => (
-          <OptionCard key={o.label} size="host" label={o.label} image={o.image} />
-        ))}
+        {question.options.map((o) => {
+          if (revealed === null) return <OptionCard key={o.label} size="host" label={o.label} image={o.image} />;
+          const shown = revealed.view.options.find((r) => r.label === o.label)!;
+          // pick は外れを薄くする。order は全選択肢の順位を読ませたいので薄くしない
+          const tone = shown.correct ? "correct" : question.mode === "pick" ? "dim" : undefined;
+          return (
+            <OptionCard key={o.label} size="host" label={o.label} image={o.image} tone={tone}>
+              <Tag option={shown} />
+              {shown.correct && <Stamp key={revealed.run} />}
+            </OptionCard>
+          );
+        })}
       </div>
       <div className="host-foot">
         <div className="msg px" aria-live="polite">
@@ -71,7 +81,7 @@ function Stage({
           <button type="button" className="btn px" aria-label="前へ" disabled={!canPrev} onClick={() => dispatch({ type: "prev" })}>
             ◀
           </button>
-          <button type="button" className="btn btn-go px" disabled>
+          <button type="button" className="btn btn-go px" onClick={() => dispatch({ type: "reveal" })}>
             正解発表
           </button>
           <button type="button" className="btn px" aria-label="次へ" disabled={!canNext} onClick={() => dispatch({ type: "next" })}>
@@ -79,7 +89,28 @@ function Stage({
           </button>
         </div>
       </div>
+      {revealed !== null && <Celebration key={revealed.run} />}
     </>
+  );
+}
+
+function Tag({ option }: { readonly option: RevealedOption }) {
+  return (
+    <div className="tag">
+      {option.rank !== null && <b>{option.rank}位</b>}
+      {option.name}
+      <br />
+      {option.price}
+    </div>
+  );
+}
+
+/** 点滅は CSS（reduced motion では止まる）。key={run} で作り直すと最初から点滅する */
+function Stamp() {
+  return (
+    <div className="stamp" data-testid="stamp">
+      正解！
+    </div>
   );
 }
 
