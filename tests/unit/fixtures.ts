@@ -1,6 +1,6 @@
 import type { ImageUrl, Question, QuestionSet } from "../../src/question-set/model";
 
-/** テスト専用。本番では parseQuestionSet だけが ImageUrl と QuestionSet を作る */
+/** テスト専用。本番では ImageUrl は問題コンパイラ、QuestionSet は parseQuestionSet だけが作る */
 export function imageUrl(url: string): ImageUrl {
   return url as ImageUrl;
 }

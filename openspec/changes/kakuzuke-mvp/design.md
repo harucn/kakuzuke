@@ -158,7 +158,7 @@ export type ParseResult =
 ```ts
 export interface KakuzukeOptions {
   readonly contentDir?: string; // 既定 "content"。環境変数 KAKUZUKE_CONTENT_DIR でも上書きできる（E2E のフィクスチャ用）
-  readonly imagesDir?: string;  // 既定 "content/images"。public/ の外に置き、Vite がそのまま公開しないようにする
+  readonly imagesDir?: string;  // 既定 "<contentDir>/images"。public/ の外に置き、Vite がそのまま公開しないようにする
   readonly serverEnvironment?: string; // 既定 "ssr"。正解を読める唯一の環境
 }
 export function kakuzukeQuestions(options?: KakuzukeOptions): Plugin;
@@ -194,7 +194,7 @@ export function loadQuestionSet(root: string, options?: KakuzukeOptions): Questi
 1. **秘密リストの検査**: `secretStrings(loadQuestionSet(root))` が空でなく、件数が「全選択肢の name と price、全問題の explanation の重複を除いた数」と一致すること。リストが空や欠けていると、以下の検査はすべて素通りになるため最初に確かめる。
 2. **陽性対照 1（埋め込み）**: `dist/client/host/index.html` から全秘密文字列が見つかること。
 3. **陽性対照 2（クライアント JS のカナリア）**: 参加者画面のクライアントコードに置いた固定の文字列（日本語を含む `LEAK_CANARY`）が `dist/client` の JS から見つかること。クライアントの minify や文字コードの設定が変わって検出器が読めなくなれば、ここで失敗する。
-4. **本検査**: `dist/client` の全ファイル（全 JS チャンク、CSS、HTML、ソースマップ）のうち `host/index.html` 以外に、秘密文字列が 1 つもないこと。見つかったときはファイル名と前後の文字を報告する。あわせて、`image` に指定された元のファイル名（拡張子を除く部分）が `dist/client` のどのファイル（`host/index.html` を含む）の中身にもパスにも現れないこと、`dist/client/images/` の画像の数が指定された写真の種類数と一致することを確かめる。
+4. **本検査**: `dist/client` の全ファイル（全 JS チャンク、CSS、HTML、ソースマップ）のうち `host/index.html` 以外に、秘密文字列が 1 つもないこと。見つかったときはファイル名と前後の文字を報告する。あわせて、`image` に指定された元のファイル名が `dist/client` に現れないことを確かめる。`host/index.html` 以外のファイルでは拡張子を除く部分（例「ボルドー」）を、`host/index.html` では拡張子付きの名前（例「ボルドー.jpg」）を、中身とパスの両方で探す（司会画面の HTML には銘柄が入るので、拡張子を除く部分で探すと「ボルドーの赤」に誤って一致する）。さらに `dist/client/images/` の画像の数が指定された写真の種類数と一致することを確かめる。
 5. **公開データの構造検査**: プラグインが `virtual:kakuzuke/public` に出す値そのもの（`load` の出力）が `toPublic(loadQuestionSet(root))` と一致し、各問題のキーが `PUBLIC_QUESTION_KEYS`、各選択肢のキーが `PUBLIC_OPTION_KEYS` と完全一致すること。`rank` は文字列検索できないので、これで保証する。
 6. **プラグインの壁の回帰テスト**（`tests/build/plugin.test.ts`）: Vite の `build()` API を小さなフィクスチャで実行し、(a) 誤りを 3 種含む YAML で全件を列挙して失敗する、(b) クライアントのモジュールから `virtual:kakuzuke/answers` を import すると失敗する、(c) クライアントのモジュールから問題ファイルを直接 import すると失敗する、ことを確かめる。
 
@@ -318,6 +318,12 @@ tests/unit/ tests/build/ tests/e2e/ tests/fixtures/content/
 - 確定（1.1）: `pages` は不要。`tanstackStart({ prerender: { enabled: true } })` だけで、`/` から `/host` へのリンクがなくても両ルートが自動検出され、`dist/client/index.html` と `dist/client/host/index.html` が出る。
 - 確定（1.1）: `wrangler.jsonc` の `assets.html_handling: "drop-trailing-slash"` は Cloudflare プラグインが生成する `dist/server/wrangler.json` に `directory: "../client"` と並んで引き継がれる。`vite preview` で `GET /host` は転送なしの 200（`etag` 付きの static asset）、`/host/` は `/host` への 307。対照として設定を外すと `/host` は `/host/` への 307 になる。
 - 確定（1.1）: ビルドの出力先は `dist/client`（static assets）と `dist/server`（Worker と生成された `wrangler.json`）。`dist/ssr` はない。`wrangler deploy` は `.wrangler/deploy/config.json` 経由で `dist/server/wrangler.json` を使う。
+- 確定（3.1）: client 環境の `generateBundle` で `this.emitFile({ type: "asset", fileName: "images/<ハッシュ>.<拡張子>" })` した写真は `dist/client/images/` に出る。ビルドは client → ssr → 事前レンダリングの順で、写真は事前レンダリングより前に揃う。代替策（作業フォルダへの書き出し）は使っていない。`vite preview` で `/images/<ハッシュ>.<拡張子>` は 200 の `image/*` を返す（smoke の E2E で確認）。
+- 確定（3.1）: 環境名は build・dev とも `client` と `ssr`（Cloudflare の Worker 環境が `ssr`、出力先は `dist/server`）。クライアントのモジュールから `virtual:kakuzuke/answers` や `content/questions.yaml`（`?raw`・`?url` 付きを含む）を import すると、ビルドがプラグインのエラーで失敗する。
+- 確定（3.1）: build では環境ごとに設定が解決し直され、プラグインのインスタンスも環境ごとに作られる。dev の `buildStart` は client 環境でしか呼ばれない。このため検証結果は、最初に呼ばれたフックが作ってインスタンス内に保持する。
+- 確定（3.1）: dev では誤りがあってもサーバーは起動する。`/` の SSR が失敗してクライアント描画に切り替わり、client 環境の `load` が投げた誤りが Vite のエラーオーバーレイに全件出る。dev 中に問題ファイルや写真を直すと、全環境の仮想モジュールを無効化して `full-reload` を送るので、再起動なしで表示が戻る。逆に正しい状態から壊した場合もすぐ誤りが出る。dev で配信する写真も、指定されたものだけ。
+- 確定（3.1）: `imagesDir` の既定は `<contentDir>/images` にした。`KAKUZUKE_CONTENT_DIR` でフィクスチャを指定したとき、写真もフィクスチャ側のものを使うため。
+- 確定（3.1）: 写真の元のファイル名の検査で、`host/index.html` に拡張子を除く部分を探すと銘柄に誤って一致する（`ボルドー.jpg` と「ボルドーの赤」）。作者に名前の制約を課さず、`host/index.html` では拡張子付きの名前で探すことにした（Decisions 6 の 4）。
 
 ほかのリスク:
 

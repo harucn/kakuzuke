@@ -7,7 +7,7 @@ import {
   type QuestionSet,
   type Rank,
   type SecretKind,
-} from "./model";
+} from "./model.ts";
 
 export type IssueCode = "shape" | "rank-permutation" | "image-missing" | "public-text-leak";
 export interface Issue {

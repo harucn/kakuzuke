@@ -1,0 +1,26 @@
+# 選択肢のラベル A・B・C は options に書いた順で決まる。rank 1 が最も高価
+questions:
+  - mode: pick
+    title: ワイン
+    description: 高いワインはどちら？
+    explanation: B は 1本 8万円のシャトー・マルゴー。A はスーパーで買える 1本 900円の赤ワインでした。
+    options:
+      - { image: テーブルワイン.jpg, rank: 2, name: スーパーの赤ワイン, price: "1本 900円" }
+      - { image: ボルドー.jpg, rank: 1, name: シャトー・マルゴー 2015, price: "1本 8万円" }
+
+  - mode: order
+    title: 焼肉
+    description: 値段の高い順に並べてください
+    explanation: A は A5 ランクの黒毛和牛、C は国産の交雑牛、B はアメリカ産の牛ロースでした。
+    options:
+      - { image: A5和牛.png, rank: 1, name: A5 ランクの黒毛和牛, price: "100g 4,000円" }
+      - { image: 輸入牛.png, rank: 3, name: アメリカ産の牛ロース, price: "100g 300円" }
+      - { image: 国産牛.png, rank: 2, name: 国産の交雑牛, price: "100g 1,200円" }
+
+  - mode: pick
+    title: チョコレート
+    description: 高いチョコレートはどちら？
+    explanation: A はベルギー産のトリュフで 1粒 600円。B はコンビニのミルクチョコ（1枚 150円）でした。
+    options:
+      - { image: 高級チョコ.jpg, rank: 1, name: ベルギー産のトリュフ, price: "1粒 600円" }
+      - { image: 板チョコ.jpg, rank: 2, name: コンビニのミルクチョコ, price: "1枚 150円" }

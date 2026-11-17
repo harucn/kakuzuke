@@ -1,7 +1,7 @@
 export type Mode = "pick" | "order";
 export type Label = "A" | "B" | "C";
 export type Rank = 1 | 2 | 3;
-/** 公開 URL（例 "/images/3f9a2c41.jpg"）。中身のハッシュから作り、元のファイル名を含まない。parseQuestionSet だけが作れる */
+/** 公開 URL（例 "/images/3f9a2c41.jpg"）。中身のハッシュから作り、元のファイル名を含まない。問題コンパイラ（vite-plugin.ts）だけが作れる */
 export type ImageUrl = string & { readonly __brand: "ImageUrl" };
 
 export interface Option {
