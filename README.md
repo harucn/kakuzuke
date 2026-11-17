@@ -76,6 +76,8 @@ Workers Builds は Cloudflare ダッシュボードで一度だけ設定する�
 | Build command | `pnpm test && pnpm build` |
 | Deploy command | `pnpm exec wrangler deploy` |
 
+Node のバージョンは `.node-version` で決める。CI と Workers Builds はこのファイルを読む。asdf に読ませるには `~/.asdfrc` に `legacy_version_file = yes` を書く。Node 26 には Corepack が同梱されていない。Workers Builds が pnpm を起動できない場合は、ビルド変数に `NODE_VERSION=24` を入れる。
+
 Workers Builds は CI の結果を待たない。単体テストと漏洩走査（`pnpm build` に含まれる）はビルドコマンドで止まるが、E2E が落ちてもデプロイされるので、main へは CI が通った PR だけをマージする。
 
 ## 手動デプロイ
