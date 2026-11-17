@@ -1,0 +1,148 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import path from "node:path";
+import type { ResolvedConfig } from "vite";
+import { describe, expect, it } from "vitest";
+import { parse as parseYaml } from "yaml";
+import { LEAK_CANARY } from "../../src/guest/leak-canary";
+import {
+  PUBLIC_OPTION_KEYS,
+  PUBLIC_QUESTION_KEYS,
+  secretStrings,
+  toPublic,
+  type PublicQuestionSet,
+} from "../../src/question-set/model";
+import { kakuzukeQuestions, loadQuestionSet } from "../../src/question-set/vite-plugin";
+import { findSecrets } from "../leak";
+
+const root = path.resolve(import.meta.dirname, "../..");
+const clientDir = path.join(root, "dist/client");
+/** 正解を含んでよい唯一のクライアント向けファイル */
+const HOST_HTML = "host/index.html";
+const BINARY_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif", ".ico", ".woff", ".woff2", ".ttf", ".otf"]);
+
+interface ClientFile {
+  /** dist/client からの相対パス（/ 区切り） */
+  readonly path: string;
+  /** バイナリは中身を読まず、パスだけ検査する */
+  readonly text: string | undefined;
+}
+
+const files: readonly ClientFile[] = readdirSync(clientDir, { recursive: true, encoding: "utf8" })
+  .filter((relative) => statSync(path.join(clientDir, relative)).isFile())
+  .map((relative) => ({
+    path: relative.split(path.sep).join("/"),
+    text: BINARY_EXTENSIONS.has(path.extname(relative).toLowerCase())
+      ? undefined
+      : readFileSync(path.join(clientDir, relative), "utf8"),
+  }));
+
+function textOf(file: string): string {
+  const text = files.find((f) => f.path === file)?.text;
+  if (text === undefined) throw new Error(`dist/client/${file} がありません`);
+  return text;
+}
+
+/** 見つかった箇所を「ファイル: 「秘密」 …前後の文字…」の形で返す。パスとファイルの中身の両方を探す */
+function leaksIn(file: ClientFile, secrets: readonly string[]): string[] {
+  return [
+    ...findSecrets(file.path, secrets).map((hit) => `${file.path}（パス）: 「${hit.secret}」 …${hit.context}…`),
+    ...findSecrets(file.text ?? "", secrets).map((hit) => `${file.path}: 「${hit.secret}」 …${hit.context}…`),
+  ];
+}
+
+// ビルドと同じ問題ファイルを読む。KAKUZUKE_CONTENT_DIR の扱いはプラグインの locate と同じ
+const set = loadQuestionSet(root);
+const secrets = secretStrings(set);
+const contentDir = path.resolve(root, process.env.KAKUZUKE_CONTENT_DIR ?? "content");
+const authored = parseYaml(readFileSync(path.join(contentDir, "questions.yaml"), "utf8")) as {
+  readonly questions: readonly { readonly options: readonly { readonly image: string }[] }[];
+};
+const imageNames = [...new Set(authored.questions.flatMap((q) => q.options.map((o) => o.image)))];
+
+type Hook<F> = F | { readonly handler: F } | undefined;
+
+function handlerOf<F extends (...args: never[]) => unknown>(hook: Hook<F>): F {
+  if (hook === undefined) throw new Error("プラグインにフックがありません");
+  return typeof hook === "function" ? hook : hook.handler;
+}
+
+/** プラグインのフックを client 環境として直接呼び、virtual:kakuzuke/public の load の出力をそのまま返す */
+async function publicModuleSource(): Promise<string> {
+  const plugin = kakuzukeQuestions();
+  const context = {
+    environment: { name: "client" },
+    error(message: string): never {
+      throw new Error(message);
+    },
+  };
+  await handlerOf(plugin.configResolved).call(context as never, { root } as ResolvedConfig);
+  const id = await handlerOf(plugin.resolveId).call(context as never, "virtual:kakuzuke/public", undefined, {
+    isEntry: false,
+  } as never);
+  if (typeof id !== "string") throw new Error(`virtual:kakuzuke/public が解決されません（${String(id)}）`);
+  const loaded = await handlerOf(plugin.load).call(context as never, id);
+  if (typeof loaded !== "string") throw new Error("virtual:kakuzuke/public の load が文字列を返しません");
+  return loaded;
+}
+
+describe("参加者に届くデータに正解情報を含めない", () => {
+  it("秘密リストが空でなく件数が一致する", () => {
+    const expected = new Set(set.flatMap((q) => [q.explanation, ...q.options.flatMap((o) => [o.name, o.price])]));
+    expect(secrets.length).toBeGreaterThan(0);
+    expect(secrets).toHaveLength(expected.size);
+    expect(new Set(secrets)).toEqual(expected);
+  });
+
+  it("陽性対照: host/index.html から全秘密文字列が見つかる", () => {
+    const found = new Set(findSecrets(textOf(HOST_HTML), secrets).map((hit) => hit.secret));
+    expect(secrets.filter((secret) => !found.has(secret)), "host/index.html に見つからない秘密文字列").toEqual([]);
+  });
+
+  it("陽性対照: クライアント JS から LEAK_CANARY が見つかる", () => {
+    const scripts = files.filter((f) => /\.m?js$/.test(f.path));
+    expect(scripts.length).toBeGreaterThan(0);
+    const found = scripts.some((f) => findSecrets(f.text ?? "", [LEAK_CANARY]).length > 0);
+    expect(found, `dist/client の JS ${scripts.length} 本のどれからも LEAK_CANARY が見つからない`).toBe(true);
+  });
+
+  it("陽性対照: 参加者画面の HTML から LEAK_CANARY が見つかる", () => {
+    const found = findSecrets(textOf("index.html"), [LEAK_CANARY]).length > 0;
+    expect(found, "dist/client/index.html から LEAK_CANARY が見つからない").toBe(true);
+  });
+
+  it("本検査: host/index.html 以外のどのファイルにも秘密文字列がない", () => {
+    expect(files.length).toBeGreaterThan(0);
+    const leaks = files.filter((f) => f.path !== HOST_HTML).flatMap((f) => leaksIn(f, secrets));
+    expect(leaks, "参加者に届くファイルに秘密文字列がある").toEqual([]);
+  });
+
+  it("本検査: 写真の元のファイル名がどのファイルの中身とパスにもない", () => {
+    expect(imageNames.length).toBeGreaterThan(0);
+    const baseNames = imageNames.map((name) => path.basename(name, path.extname(name)));
+    // 司会画面の HTML には銘柄が入るので、拡張子を除く部分で探すと「ボルドー」が「ボルドーの赤」に誤って一致する
+    const leaks = files.flatMap((f) => leaksIn(f, f.path === HOST_HTML ? imageNames : baseNames));
+    expect(leaks, "写真の元のファイル名が dist/client に現れる").toEqual([]);
+  });
+
+  it("本検査: dist/client/images の画像は指定された写真の種類と一致する", () => {
+    const published = [...new Set(set.flatMap((q) => q.options.map((o) => o.image.slice(1))))].sort();
+    const emitted = files.filter((f) => f.path.startsWith("images/")).map((f) => f.path).sort();
+    expect(emitted).toEqual(published);
+  });
+
+  it("公開データの構造: virtual:kakuzuke/public の出力が toPublic と一致し、キーが許可リストと完全一致する", async () => {
+    const source = await publicModuleSource();
+    const json = /^export default (.*);$/s.exec(source)?.[1];
+    if (json === undefined) throw new Error(`export default の形ではありません: ${source.slice(0, 80)}`);
+    const data = JSON.parse(json) as PublicQuestionSet;
+
+    expect(data).toStrictEqual(toPublic(set));
+    for (const question of data) {
+      expect(Object.keys(question).sort()).toEqual([...PUBLIC_QUESTION_KEYS].sort());
+      for (const option of question.options) {
+        expect(Object.keys(option).sort()).toEqual([...PUBLIC_OPTION_KEYS].sort());
+        expect(option).not.toHaveProperty("rank");
+      }
+    }
+  });
+});

@@ -1,0 +1,34 @@
+{
+  "name": "kakuzuke",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.32.0",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build && vitest run --project build",
+    "preview": "vite preview",
+    "test": "vitest run --project unit",
+    "e2e": "KAKUZUKE_CONTENT_DIR=tests/fixtures/content pnpm build && playwright test --project=scenario && pnpm build && playwright test --project=content",
+    "deploy": "pnpm build && wrangler deploy"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "1.170.46",
+    "@tanstack/react-start": "1.169.5",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.69.1",
+    "@playwright/test": "1.65.1",
+    "@types/node": "22.20.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.3.0",
+    "typescript": "6.0.3",
+    "vite": "8.3.8",
+    "vitest": "5.1.0",
+    "wrangler": "4.163.0",
+    "yaml": "2.9.1"
+  }
+}

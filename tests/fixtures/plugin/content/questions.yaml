@@ -1,0 +1,8 @@
+questions:
+  - mode: pick
+    title: 色
+    description: 高いのはどちら？
+    explanation: B は顔料が高価でした。
+    options:
+      - { image: a.png, rank: 2, name: 赤い絵の具, price: "100円" }
+      - { image: b.png, rank: 1, name: 青い絵の具, price: "200円" }
