@@ -324,6 +324,11 @@ tests/unit/ tests/build/ tests/e2e/ tests/fixtures/content/
 - 確定（3.1）: dev では誤りがあってもサーバーは起動する。`/` の SSR が失敗してクライアント描画に切り替わり、client 環境の `load` が投げた誤りが Vite のエラーオーバーレイに全件出る。dev 中に問題ファイルや写真を直すと、全環境の仮想モジュールを無効化して `full-reload` を送るので、再起動なしで表示が戻る。逆に正しい状態から壊した場合もすぐ誤りが出る。dev で配信する写真も、指定されたものだけ。
 - 確定（3.1）: `imagesDir` の既定は `<contentDir>/images` にした。`KAKUZUKE_CONTENT_DIR` でフィクスチャを指定したとき、写真もフィクスチャ側のものを使うため。
 - 確定（3.1）: 写真の元のファイル名の検査で、`host/index.html` に拡張子を除く部分を探すと銘柄に誤って一致する（`ボルドー.jpg` と「ボルドーの赤」）。作者に名前の制約を課さず、`host/index.html` では拡張子付きの名前で探すことにした（Decisions 6 の 4）。
+- 確定（3.2）: `virtual:kakuzuke/answers` を読む環境の名前は Cloudflare プラグイン下でも `ssr` で、`serverEnvironment` は既定のままでよい。`serverEnvironment` を存在しない名前にすると client のビルドは通り、ssr のビルドがプラグインのエラー（`virtual:kakuzuke/answers はサーバー側でしか読み込めません`）で失敗する。
+- 確定（3.2）: `createServerFn` の handler 本体と、その中の動的 import はクライアントのビルドから消える。クライアントの JS に残るのは `/_serverFn/<id>` への fetch だけで、`host/index.html` 以外の `dist/client` には `kakuzuke/answers` の文字列も秘密文字列もない。handler が残れば client のビルドが壁で失敗するので、ビルドが通ること自体も証拠になる。
+- 確定（3.2）: 正解は `dist/client/host/index.html` の `<script>` の中に、loader の dehydrate データ（seroval の `$R[n]={…,name:"…",price:"…"}` の形）として入る。日本語などの非 ASCII 文字と `&` は UTF-8 のまま（`\uXXXX` や HTML 実体参照にはならない）で、JS の文字列のエスケープとして `"` は `\"`、`\` は `\\`、`<` は `\x3C` になる（解説に `"`・`\`・`<b>`・`</script>`・`&amp;` を入れたフィクスチャで確認）。漏洩の検出器は Decisions 6 の一覧に加えて `\"` と `\\` も戻す必要がある。`<script>` の外のマークアップに秘密文字列はない（仮の司会画面は番号と問題名だけを描画する）。
+- 確定（3.2）: 事前レンダリングした `/host` を開いて hydration しても `/_serverFn/` へのリクエストは起きない（`vite preview` と Playwright で確認。リクエストは HTML と JS 2 本だけ）。hydration 後に `/` へ移動して `/host` に戻っても起きない（`staleTime: Infinity` によると推定。外した対照は取っていない）。`/` を開いてからクライアント側で `/host` に遷移したときだけ GET が 1 回起き、Worker が 200 を返す。
+- 確定（3.2）: `QuestionSet` のブランド（タプルとの交差型）は `createServerFn` の直列化の型検査を通らない（配列のメソッドまで直列化の対象として検査される）。handler の戻り値の型を `readonly [Question, ...Question[]]` に広げて返すので、`/host` の loader の値はブランドを持たない。`HostScreen` はこの型を受け取る。
 
 ほかのリスク:
 
