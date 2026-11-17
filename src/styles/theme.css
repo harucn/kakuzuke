@@ -180,3 +180,84 @@ body {
   color: var(--mute);
   font-size: 13px;
 }
+
+/* 1 文字ずつ現れる文（HostScreen の Typed）。全文は最初から DOM にあり、文字ごとの遅れは Typed が style で付ける */
+@keyframes type-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .typed > span {
+    animation: type-in 0s backwards;
+  }
+}
+
+/* 司会画面: ビューポートに収まる最大の 16:9。中の寸法は cqw（枠の幅の 1%）で決める */
+.host-stage {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+}
+.host {
+  width: min(100vw - 16px, (100dvh - 16px) * 16 / 9);
+  aspect-ratio: 16 / 9;
+  container-type: inline-size;
+  position: relative;
+  overflow: hidden;
+  padding: 3cqw 4cqw;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 1.6cqw;
+}
+.host-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--label);
+  color: var(--green);
+  font-size: 1.6cqw;
+  letter-spacing: 0.1em;
+}
+.host-bar .hearts {
+  color: var(--red);
+  letter-spacing: 0.3em;
+}
+.host-title {
+  margin: 0;
+  font-size: 4.4cqw;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--green-deep);
+  text-wrap: balance;
+}
+.host-title small {
+  display: block;
+  font-family: var(--label);
+  font-size: 1.8cqw;
+  color: var(--red);
+  letter-spacing: 0.14em;
+  margin-bottom: 0.6cqw;
+}
+.host-opts {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 3cqw;
+  min-height: 0;
+}
+.host-foot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2cqw;
+  align-items: stretch;
+}
+.host-btns {
+  display: flex;
+  gap: 1.2cqw;
+  align-items: center;
+}
+.host-btns .btn {
+  font-size: 1.8cqw;
+  padding: 0.8cqw 1.4cqw;
+}

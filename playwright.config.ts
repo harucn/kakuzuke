@@ -6,7 +6,11 @@ const baseURL = process.env.BASE_URL ?? `http://localhost:${port}`;
 export default defineConfig({
   testDir: "tests/e2e",
   use: { baseURL },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  // scenario は tests/fixtures/content、content は content/ でビルドした dist に対して流す（package.json の e2e がビルドし分ける）
+  projects: [
+    { name: "scenario", testMatch: ["host.spec.ts"], use: { ...devices["Desktop Chrome"] } },
+    { name: "content", testMatch: ["smoke.spec.ts"], use: { ...devices["Desktop Chrome"] } },
+  ],
   webServer: process.env.BASE_URL
     ? undefined
     : {

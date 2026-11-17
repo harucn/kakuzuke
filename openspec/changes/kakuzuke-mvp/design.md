@@ -60,7 +60,7 @@ questions:
 pnpm dev           # 誤りは dev のエラーオーバーレイに出る（サーバーは止まらない）
 pnpm test          # 単体テスト（vitest run --project unit）
 pnpm build         # 検証 → "/" と "/host" を事前レンダリング → 漏洩走査（失敗したらビルド失敗）
-pnpm e2e           # pnpm build && playwright test（常に最新のビルドを検査する）
+pnpm e2e           # フィクスチャでビルドして scenario、実データでビルドし直して content を流す（常に最新のビルドを検査する）
 pnpm run deploy    # pnpm build && wrangler deploy
 ```
 
@@ -253,8 +253,8 @@ export function installHostKeys(target: Window, dispatch: (e: HostEvent) => void
 | --- | --- | --- |
 | `tests/unit/` | `pnpm test` | parse・model（`secretStrings` を含む）・cursor・machine・reveal・restore・keymap・テーマの配色のコントラスト比 |
 | `tests/build/` | `pnpm build` の最後 | Decisions 6 の 1〜6 |
-| `tests/e2e/`（scenario） | `pnpm e2e` | spec の Scenario。フィクスチャ `tests/fixtures/content/`（Scenario が前提にするデータ: B が rank 1 の pick、A/B/C が 1/3/2 の order、5 問以上）を `KAKUZUKE_CONTENT_DIR` で読ませてビルドしたものに対して流す |
-| `tests/e2e/content.spec.ts` | `pnpm e2e`、`BASE_URL` 指定時はデプロイ先 | 実データの全問をボタンとキーそれぞれで最初から最後まで進め、各問題で正解発表し、`answerOf` の結果と表示が一致すること。1920×1080 で `document.fonts.ready` の後、問題名・全選択肢・解説・操作ボタンが表示領域内にあり、解説欄が `scrollHeight <= clientHeight` であること。司会画面の表示中と再読み込み時に `/_serverFn/` へのリクエストが 0 件であること。参加者画面の漏洩検査 |
+| `tests/e2e/host.spec.ts`・`guest.spec.ts`（Playwright の project `scenario`） | `pnpm e2e` | spec の Scenario。フィクスチャ `tests/fixtures/content/`（Scenario が前提にするデータ: B が rank 1 の pick、A/B/C が 1/3/2 の order、5 問以上）を `KAKUZUKE_CONTENT_DIR` で読ませてビルドしたものに対して流す |
+| `tests/e2e/content.spec.ts`・`smoke.spec.ts`（project `content`） | `pnpm e2e`、`BASE_URL` 指定時はデプロイ先 | 実データの全問をボタンとキーそれぞれで最初から最後まで進め、各問題で正解発表し、`answerOf` の結果と表示が一致すること。1920×1080 で `document.fonts.ready` の後、問題名・全選択肢・解説・操作ボタンが表示領域内にあり、解説欄が `scrollHeight <= clientHeight` であること。司会画面の表示中と再読み込み時に `/_serverFn/` へのリクエストが 0 件であること。参加者画面の漏洩検査 |
 
 - `vitest` は `unit` と `build` の 2 プロジェクトで、どちらも Cloudflare / Start のプラグインを読まない。`pnpm test` は `unit` だけを実行する。テストのない段階でも失敗しないよう `passWithNoTests` を有効にする。
 - Playwright の `webServer` は `vite preview`（workerd）。`BASE_URL` があるときは `webServer` を使わず、その URL に対して流す。
@@ -332,6 +332,7 @@ tests/unit/ tests/build/ tests/e2e/ tests/fixtures/content/
 
 - 確定（3.3）: 検出器は JS のエスケープ（`\uXXXX`・`\u{…}`・`\xNN`・`\` と任意の 1 文字）と HTML の実体参照（名前付き 6 種と数値）を 1 回の走査で戻してから探す。カナリア `LEAK_CANARY` は参加者画面のルート要素の `data-leak-canary` 属性に描画し、クライアント JS と `index.html` の両方で陽性対照にする。既知の穴: HTML の地の文で、末尾が `\` の秘密や `\` の直後が実体参照になる秘密は一致しない（JS と埋め込みデータでは一致する）。
 - 確定（3.3）: 写真の元のファイル名が `a.png` のように 1〜2 文字だと、名前の検査がチャンクの中身に大量に誤一致してビルドが失敗する（安全側の失敗）。写真には意味のある名前を付ける（README に書く）。E2E のフィクスチャの写真も意味のある名前にする。
+- 確定（4.4）: `pnpm e2e` は `KAKUZUKE_CONTENT_DIR=tests/fixtures/content pnpm build && playwright test --project=scenario && pnpm build && playwright test --project=content`。フィクスチャのビルドにも漏洩走査が走る。最後のビルドは実データなので、`pnpm e2e` の後の `dist` はそのままデプロイできる。Playwright の project は `testMatch` でファイルを振り分ける（`scenario` は `host.spec.ts`、`content` は `smoke.spec.ts`。後続の `guest.spec.ts` と `content.spec.ts` もそれぞれに足す）。
 
 ほかのリスク:
 

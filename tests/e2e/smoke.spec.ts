@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 for (const [path, text] of [
   ["/", "参加者画面（仮）"],
-  ["/host", "司会画面（仮）"],
+  ["/host", `aria-label="司会画面"`],
 ]) {
   test(`GET ${path} returns 200 HTML without redirect`, async ({ request }) => {
     const res = await request.get(path, { maxRedirects: 0 });
