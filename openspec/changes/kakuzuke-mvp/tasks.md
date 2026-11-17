@@ -8,7 +8,7 @@
 
 ## 2. 問題データのドメインモデルと検証
 
-- [ ] 2.1 `src/question-set/model.ts` に型と `PUBLIC_*_KEYS`（design の Decisions 2）、`toPublic`、`answerOf`、`secretStrings` を実装する。`tests/unit/model.test.ts` に、question-set spec の「選択肢の順位」の正解判定 2 件と「参加者向けの公開形」3 件の Scenario、`toPublic` の各オブジェクトのキーが許可リストと完全一致すること、`secretStrings` が全選択肢の name と price・全問題の explanation を重複なく返すことを書く。検証: `pnpm test` が通る
+- [x] 2.1 `src/question-set/model.ts` に型と `PUBLIC_*_KEYS`（design の Decisions 2）、`toPublic`、`answerOf`、`secretStrings` を実装する。`tests/unit/model.test.ts` に、question-set spec の「選択肢の順位」の正解判定 2 件と「参加者向けの公開形」3 件の Scenario、`toPublic` の各オブジェクトのキーが許可リストと完全一致すること、`secretStrings` が全選択肢の name と price・全問題の explanation を重複なく返すことを書く。検証: `pnpm test` が通る
 - [ ] 2.2 `src/question-set/parse.ts` に `parseQuestionSet` と `formatIssues` を実装する（IssueCode は design の Decisions 3。ラベルは並び順から決め、`image` は対応表で公開 URL に置き換える）。`tests/unit/parse.test.ts` に question-set spec の検証の Scenario（データ形式 6、選択肢の数とラベル 3、rank 2、写真の欠落 1、問題名と説明 3）を書く。検証: `pnpm test` が通る
 - [x] 2.3 `src/deck/cursor.ts` に `move` / `boundsOf` / `positionText` を実装し、両端での据え置き・同一値の返却・範囲外 index の丸めを `tests/unit/cursor.test.ts` で確かめる。検証: `pnpm test` が通る
 
