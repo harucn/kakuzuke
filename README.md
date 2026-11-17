@@ -60,7 +60,25 @@ questions:
 
 `pnpm e2e` の後の `dist` は実データのビルドなので、そのままデプロイできる。
 
-## デプロイ
+## CI/CD
+
+- CI: PR と main への push で GitHub Actions（`.github/workflows/ci.yml`）が `pnpm test` と `pnpm e2e` を流す。
+- CD: Cloudflare Workers Builds が main への push を拾ってビルドとデプロイを行う。GitHub に Secrets は置かない。
+
+Workers Builds は Cloudflare ダッシュボードで一度だけ設定する。
+
+1. Workers & Pages → `kakuzuke` → Settings → Build → Connect で GitHub のこのリポジトリをつなぐ
+2. 次の値を設定する
+
+| 項目 | 値 |
+| --- | --- |
+| Production branch | `main` |
+| Build command | `pnpm test && pnpm build` |
+| Deploy command | `pnpm exec wrangler deploy` |
+
+Workers Builds は CI の結果を待たない。単体テストと漏洩走査（`pnpm build` に含まれる）はビルドコマンドで止まるが、E2E が落ちてもデプロイされるので、main へは CI が通った PR だけをマージする。
+
+## 手動デプロイ
 
 ```sh
 pnpm exec wrangler login   # 初回だけ
