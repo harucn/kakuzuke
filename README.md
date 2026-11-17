@@ -56,7 +56,7 @@ questions:
 | `pnpm test` | 単体テストを実行する |
 | `pnpm build` | 問題ファイルを検証し、`/` と `/host` を事前レンダリングして、正解の漏洩を走査する。どれかが失敗したらビルドも失敗する |
 | `pnpm e2e` | フィクスチャ（`tests/fixtures/content`）でビルドして E2E を流し、実データでビルドし直して全問を通す E2E を流す |
-| `pnpm run deploy` | `pnpm build` の後に `wrangler deploy` で公開する |
+| `pnpm run deploy` | `pnpm test` と `pnpm build` の後に `wrangler deploy` で公開する |
 
 `pnpm e2e` の後の `dist` は実データのビルドなので、そのままデプロイできる。
 
@@ -65,20 +65,20 @@ questions:
 - CI: PR と main への push で GitHub Actions（`.github/workflows/ci.yml`）が `pnpm test` と `pnpm e2e` を流す。
 - CD: Cloudflare Workers Builds が main への push を拾ってビルドとデプロイを行う。GitHub に Secrets は置かない。
 
-Workers Builds は Cloudflare ダッシュボードで一度だけ設定する。
+Workers Builds の設定はファイルに書けず、Cloudflare ダッシュボードで一度だけ設定する。手順は `package.json` の `deploy` に寄せ、ダッシュボードにはそれを呼ぶことだけを書く。
 
 1. Workers & Pages → `kakuzuke` → Settings → Build → Connect で GitHub のこのリポジトリをつなぐ
 2. 次の値を設定する
 
 | 項目 | 値 |
 | --- | --- |
-| Production branch | `main` |
-| Build command | `pnpm test && pnpm build` |
-| Deploy command | `pnpm exec wrangler deploy` |
+| Git branch | `main` |
+| Build command | 空欄 |
+| Deploy command | `pnpm run deploy` |
 
 Node のバージョンは `.node-version` で決める。CI と Workers Builds はこのファイルを読む。asdf に読ませるには `~/.asdfrc` に `legacy_version_file = yes` を書く。Node 26 には Corepack が同梱されていない。Workers Builds が pnpm を起動できない場合は、ビルド変数に `NODE_VERSION=24` を入れる。
 
-Workers Builds は CI の結果を待たない。単体テストと漏洩走査（`pnpm build` に含まれる）はビルドコマンドで止まるが、E2E が落ちてもデプロイされるので、main へは CI が通った PR だけをマージする。
+Workers Builds は CI の結果を待たない。単体テストと漏洩走査（`pnpm build` に含まれる）が落ちればデプロイは止まるが、E2E が落ちてもデプロイされるので、main へは CI が通った PR だけをマージする。
 
 ## 手動デプロイ
 
