@@ -37,7 +37,7 @@ function answerAt<M extends "pick" | "order">(index: number, mode: M) {
 async function expectQuestion(page: Page, index: number) {
   const q = questions[index];
   await expect(page.getByRole("heading", { level: 1 })).toContainText(q.title);
-  await expect(page.getByText(`${index + 1} / ${questions.length}`)).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 }).locator("small")).toHaveText(`STAGE ${index + 1}`);
   await expect(page.getByText(q.description)).toBeVisible();
   await expectOptions(page, q.options);
 }

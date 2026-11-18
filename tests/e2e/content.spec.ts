@@ -34,7 +34,7 @@ const card = (page: Page, label: Label) => page.locator(`.option-card[data-label
 /** 第 index + 1 問の番号・問題名と全選択肢の写真・選択肢の説明が表示順に表示され、写真が読み込み済み */
 async function expectQuestion(page: Page, index: number) {
   const q = questions[index];
-  await expect(page.getByText(`${index + 1} / ${questions.length}`)).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 }).locator("small")).toHaveText(`STAGE ${index + 1}`);
   await expect(page.getByRole("heading", { level: 1 })).toContainText(q.title);
   await expectOptions(page, q.options);
 }

@@ -33,8 +33,6 @@ export const TEXT_PAIRS: readonly TextPair[] = [
   { text: "ink", bg: "paper", use: "本文・正解発表の銘柄と価格（司会画面）" },
   { text: "green-deep", bg: "cream", use: "問題名・タイトル（参加者画面）" },
   { text: "green-deep", bg: "paper", use: "問題名・タイトル（司会画面）・枠付きボタン" },
-  { text: "green", bg: "cream", use: "STAGE 表示（参加者画面）" },
-  { text: "green", bg: "paper", use: "STAGE 表示（司会画面）" },
   { text: "red", bg: "cream", use: "STAGE 見出し（参加者画面）" },
   { text: "red", bg: "paper", use: "STAGE 見出し・正解！の印・順位（司会画面）" },
   { text: "ink", bg: "paper", use: "選択肢の説明（両画面のカード）" },
