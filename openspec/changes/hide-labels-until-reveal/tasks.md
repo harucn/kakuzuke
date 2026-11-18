@@ -28,11 +28,11 @@
 
 ## 3. 画面に収まることを確かめる
 
-- [ ] 3.1 `content.spec.ts` に host-screen spec の「1920×1080 の表示で正解発表前の全要素が 1 画面に収まる」と、design の Decisions 3 の「写真の高さがカードの高さの半分以上」を本番の問題データの全問について足す。検証: `pnpm exec tsc --noEmit && pnpm test && pnpm e2e` が通る
+- [x] 3.1 `content.spec.ts` に host-screen spec の「1920×1080 の表示で正解発表前の全要素が 1 画面に収まる」と、design の Decisions 3 の「写真の高さがカードの高さの半分以上」を本番の問題データの全問について足す。検証: `pnpm exec tsc --noEmit && pnpm test && pnpm e2e` が通る
 
 ## 4. 文書
 
-- [ ] 4.1 README の本番前の確認に、「ラベルはくじで決め、ラベル順と同じ並びになっても直さない」「YAML のラベルと会場で配る実物のラベルを照合する」「解説の文のラベルと YAML のラベルを照合する」「選択肢の説明に銘柄の一部を書かない」を足す。検証: `pnpm exec tsc --noEmit && pnpm test && pnpm e2e && pnpm build && openspec validate hide-labels-until-reveal` が通る
+- [x] 4.1 README の本番前の確認に、「ラベルはくじで決め、ラベル順と同じ並びになっても直さない」「YAML のラベルと会場で配る実物のラベルを照合する」「解説の文のラベルと YAML のラベルを照合する」「選択肢の説明に銘柄の一部を書かない」を足す。検証: `pnpm exec tsc --noEmit && pnpm test && pnpm e2e && pnpm build && openspec validate hide-labels-until-reveal` が通る
 
 ## Workflow follow-up
 
