@@ -37,6 +37,7 @@ export const TEXT_PAIRS: readonly TextPair[] = [
   { text: "green", bg: "paper", use: "STAGE 表示（司会画面）" },
   { text: "red", bg: "cream", use: "STAGE 見出し（参加者画面）" },
   { text: "red", bg: "paper", use: "STAGE 見出し・正解！の印・順位（司会画面）" },
+  { text: "ink", bg: "paper", use: "選択肢の説明（両画面のカード）" },
   { text: "paper", bg: "green", use: "A/B/C のラベル" },
   { text: "paper", bg: "red", use: "正解のラベル・正解発表ボタン・はじめるボタン" },
   { text: "paper", bg: "green-deep", use: "メッセージ欄の本文" },

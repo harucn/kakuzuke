@@ -20,8 +20,8 @@ const wine: Question = {
   description: "高いワインはどちら？",
   explanation: "B は 1本 5万円のボルドー。",
   options: [
-    { label: "A", image: imageUrl("/images/aaa.jpg"), rank: 2, name: "テーブルワイン", price: "1本 1,000円" },
-    { label: "B", image: imageUrl("/images/bbb.jpg"), rank: 1, name: "ボルドーの赤", price: "1本 5万円" },
+    { label: "A", image: imageUrl("/images/aaa.jpg"), note: "チリ産の赤ワイン", rank: 2, name: "テーブルワイン", price: "1本 1,000円" },
+    { label: "B", image: imageUrl("/images/bbb.jpg"), note: "フランス産の赤ワイン", rank: 1, name: "ボルドーの赤", price: "1本 5万円" },
   ],
 };
 
@@ -31,20 +31,21 @@ const beef: Question = {
   description: "高い順に並べよ",
   explanation: "A が A5 ランク。",
   options: [
-    { label: "A", image: imageUrl("/images/ccc.jpg"), rank: 1, name: "A5 和牛", price: "100g 5,000円" },
-    { label: "B", image: imageUrl("/images/ddd.jpg"), rank: 3, name: "輸入牛", price: "100g 300円" },
-    { label: "C", image: imageUrl("/images/eee.jpg"), rank: 2, name: "国産牛", price: "100g 1,000円" },
+    { label: "A", image: imageUrl("/images/ccc.jpg"), note: "霜降りの牛肉", rank: 1, name: "A5 和牛", price: "100g 5,000円" },
+    { label: "B", image: imageUrl("/images/ddd.jpg"), note: "赤身の牛肉", rank: 3, name: "輸入牛", price: "100g 300円" },
+    { label: "C", image: imageUrl("/images/eee.jpg"), note: "脂の多い牛肉", rank: 2, name: "国産牛", price: "100g 1,000円" },
   ],
 };
 
+// 表示順がラベル順と別でも公開形が表示順を保つことを確かめるため、B・A の順に書く
 const water: Question = {
   mode: "pick",
   title: "水",
   description: "高い水はどちら？",
   explanation: "A は水道水。",
   options: [
-    { label: "A", image: imageUrl("/images/fff.jpg"), rank: 2, name: "水道水", price: "1本 1,000円" },
-    { label: "B", image: imageUrl("/images/ggg.jpg"), rank: 1, name: "輸入牛", price: "1本 3,000円" },
+    { label: "B", image: imageUrl("/images/ggg.jpg"), note: "海外の水", rank: 1, name: "輸入牛", price: "1本 3,000円" },
+    { label: "A", image: imageUrl("/images/fff.jpg"), note: "国内の水", rank: 2, name: "水道水", price: "1本 1,000円" },
   ],
 };
 
@@ -71,6 +72,14 @@ describe("toPublic", () => {
     }
   });
 
+  it("公開形はラベルを含まない", () => {
+    for (const q of publicSet.questions) {
+      for (const o of q.options) {
+        expect(o).not.toHaveProperty("label");
+      }
+    }
+  });
+
   it("公開形は解説を含まない", () => {
     for (const q of publicSet.questions) {
       expect(q).not.toHaveProperty("explanation");
@@ -85,8 +94,8 @@ describe("toPublic", () => {
         title: "ワイン",
         description: "高いワインはどちら？",
         options: [
-          { label: "A", image: "/images/aaa.jpg" },
-          { label: "B", image: "/images/bbb.jpg" },
+          { image: "/images/aaa.jpg", note: "チリ産の赤ワイン" },
+          { image: "/images/bbb.jpg", note: "フランス産の赤ワイン" },
         ],
       },
       {
@@ -94,9 +103,9 @@ describe("toPublic", () => {
         title: "牛肉",
         description: "高い順に並べよ",
         options: [
-          { label: "A", image: "/images/ccc.jpg" },
-          { label: "B", image: "/images/ddd.jpg" },
-          { label: "C", image: "/images/eee.jpg" },
+          { image: "/images/ccc.jpg", note: "霜降りの牛肉" },
+          { image: "/images/ddd.jpg", note: "赤身の牛肉" },
+          { image: "/images/eee.jpg", note: "脂の多い牛肉" },
         ],
       },
       {
@@ -104,8 +113,8 @@ describe("toPublic", () => {
         title: "水",
         description: "高い水はどちら？",
         options: [
-          { label: "A", image: "/images/fff.jpg" },
-          { label: "B", image: "/images/ggg.jpg" },
+          { image: "/images/ggg.jpg", note: "海外の水" },
+          { image: "/images/fff.jpg", note: "国内の水" },
         ],
       },
     ]);
@@ -150,8 +159,8 @@ describe("secretStrings", () => {
       "国産牛",
       "100g 1,000円",
       "A が A5 ランク。",
-      "水道水",
       "1本 3,000円",
+      "水道水",
       "A は水道水。",
     ]);
   });

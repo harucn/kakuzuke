@@ -6,14 +6,14 @@ questions:
     description: 高い順に並べてください
     explanation: ""
     options:
-      - { image: 赤.png, rank: 1, name: 赤い絵の具, price: "100円" }
-      - { image: 青.png, rank: 1, name: 青い絵の具, price: "200円" }
-      - { image: 緑.png, rank: 2, name: 緑の絵の具, price: "300円" }
+      - { label: A, image: 赤.png, note: 水彩絵の具, rank: 1, name: 赤い絵の具, price: "100円" }
+      - { label: B, image: 青.png, note: 油絵の具, rank: 1, name: 青い絵の具, price: "200円" }
+      - { label: C, image: 緑.png, note: アクリル絵の具, rank: 2, name: 緑の絵の具, price: "300円" }
 
   - mode: pick
     title: 果物
     description: 高いのはどちら？
     explanation: B は季節外れの輸入品でした。
     options:
-      - { image: 黄.png, rank: 2, name: バナナ, price: "1本 30円" }
-      - { image: ない.png, rank: 1, name: マンゴー, price: "1個 3,000円" }
+      - { label: A, image: 黄.png, note: 細長い果物, rank: 2, name: バナナ, price: "1本 30円" }
+      - { label: B, image: ない.png, note: 丸い果物, rank: 1, name: マンゴー, price: "1個 3,000円" }

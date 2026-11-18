@@ -77,8 +77,8 @@ function QuestionView({
       </h1>
       <p className="guest-desc">{question.description}</p>
       <div className="guest-opts">
-        {question.options.map((o) => (
-          <OptionCard key={o.label} label={o.label} image={o.image} />
+        {question.options.map((o, i) => (
+          <OptionCard key={i} image={o.image} note={o.note} />
         ))}
       </div>
       <nav className="guest-nav" aria-label="問題の移動">

@@ -12,7 +12,7 @@ export interface RevealedOption {
 export interface RevealView {
   readonly headline: string;
   readonly explanation: string;
-  /** ラベル順 */
+  /** 表示順 */
   readonly options: readonly RevealedOption[];
 }
 

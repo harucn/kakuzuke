@@ -1,4 +1,5 @@
 # E2E（tests/e2e/host.spec.ts など）が前提にするデータ。第 1 問は B が rank 1 の pick、第 2 問は A/B/C が 1/3/2 の order
+# 表示順とラベル順が別であることを確かめるため、第 1 問は B・A、第 2 問は C・A・B の順に書く
 title: テストの会 格付けチェック
 questions:
   - mode: pick
@@ -6,39 +7,39 @@ questions:
     description: 高いワインはどちら？
     explanation: B は 1本 6万円の熟成ボルドー。A はスーパーで買える赤ワインでした。
     options:
-      - { image: 左のグラス.png, rank: 2, name: スーパーの赤ワイン, price: "1本 900円" }
-      - { image: 右のグラス.png, rank: 1, name: 熟成ボルドー 2010, price: "1本 6万円" }
+      - { label: B, image: 右のグラス.png, note: フランス産の赤ワイン, rank: 1, name: 熟成ボルドー 2010, price: "1本 6万円" }
+      - { label: A, image: 左のグラス.png, note: チリ産の赤ワイン, rank: 2, name: スーパーの赤ワイン, price: "1本 900円" }
 
   - mode: order
     title: 焼肉
     description: 値段の高い順に並べてください
     explanation: A は黒毛和牛のサーロイン、C は国産交雑牛のカルビ、B は輸入牛の肩ロースでした。
     options:
-      - { image: 大皿の肉.png, rank: 1, name: 黒毛和牛のサーロイン, price: "100g 4,000円" }
-      - { image: 小皿の肉.png, rank: 3, name: 輸入牛の肩ロース, price: "100g 300円" }
-      - { image: 木皿の肉.png, rank: 2, name: 国産交雑牛のカルビ, price: "100g 1,200円" }
+      - { label: C, image: 木皿の肉.png, note: 脂の多い牛肉, rank: 2, name: 国産交雑牛のカルビ, price: "100g 1,200円" }
+      - { label: A, image: 大皿の肉.png, note: 霜降りの牛肉, rank: 1, name: 黒毛和牛のサーロイン, price: "100g 4,000円" }
+      - { label: B, image: 小皿の肉.png, note: 赤身の牛肉, rank: 3, name: 輸入牛の肩ロース, price: "100g 300円" }
 
   - mode: pick
     title: チョコレート
     description: 高いチョコレートはどちら？
     explanation: A はベルギー産のトリュフ。B はコンビニのミルクチョコでした。
     options:
-      - { image: 金色の箱.png, rank: 1, name: ベルギー産のトリュフ, price: "1粒 600円" }
-      - { image: 赤色の箱.png, rank: 2, name: コンビニのミルクチョコ, price: "1枚 150円" }
+      - { label: A, image: 金色の箱.png, note: 粒のチョコレート, rank: 1, name: ベルギー産のトリュフ, price: "1粒 600円" }
+      - { label: B, image: 赤色の箱.png, note: 板状のチョコレート, rank: 2, name: コンビニのミルクチョコ, price: "1枚 150円" }
 
   - mode: order
     title: コーヒー
     description: 値段の高い順に並べてください
     explanation: B はゲイシャ種の豆、A は喫茶店のブレンド、C はインスタントでした。
     options:
-      - { image: 白いカップ.png, rank: 2, name: 喫茶店のブレンド, price: "1杯 500円" }
-      - { image: 青いカップ.png, rank: 1, name: ゲイシャ種のハンドドリップ, price: "1杯 2,000円" }
-      - { image: 紙のカップ.png, rank: 3, name: インスタントコーヒー, price: "1杯 20円" }
+      - { label: A, image: 白いカップ.png, note: 深煎りのコーヒー, rank: 2, name: 喫茶店のブレンド, price: "1杯 500円" }
+      - { label: B, image: 青いカップ.png, note: 浅煎りのコーヒー, rank: 1, name: ゲイシャ種のハンドドリップ, price: "1杯 2,000円" }
+      - { label: C, image: 紙のカップ.png, note: 粉を溶かすコーヒー, rank: 3, name: インスタントコーヒー, price: "1杯 20円" }
 
   - mode: pick
     title: お水
     description: 高いお水はどちら？
     explanation: B は北欧の氷河から汲んだ水。A は東京の水道水でした。
     options:
-      - { image: 透明な瓶.png, rank: 2, name: 東京の水道水, price: "1L 0.2円" }
-      - { image: 緑色の瓶.png, rank: 1, name: 北欧の氷河の水, price: "1L 1,500円" }
+      - { label: A, image: 透明な瓶.png, note: 国内の水, rank: 2, name: 東京の水道水, price: "1L 0.2円" }
+      - { label: B, image: 緑色の瓶.png, note: 海外の水, rank: 1, name: 北欧の氷河の水, price: "1L 1,500円" }

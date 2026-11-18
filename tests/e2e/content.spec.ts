@@ -7,6 +7,7 @@ import { revealView } from "../../src/host/reveal.ts";
 import { secretStrings, type Label } from "../../src/question-set/model.ts";
 import { loadQuestionSet } from "../../src/question-set/vite-plugin.ts";
 import { findSecrets } from "../leak.ts";
+import { expectNoLabels, expectOptions, optionCard, photoBoxes } from "./options.ts";
 
 // 期待値はローカルの問題ファイルから作る。BASE_URL でデプロイ先に流すときは、デプロイしたものと同じ content であること
 const root = path.resolve(import.meta.dirname, "../..");
@@ -30,17 +31,12 @@ const nextButton = (page: Page) => page.getByRole("button", { name: "次へ" });
 const revealButton = (page: Page) => page.getByRole("button", { name: "正解発表" });
 const card = (page: Page, label: Label) => page.locator(`.option-card[data-label="${label}"]`);
 
-/** 第 index + 1 問の番号・問題名と全選択肢の写真が表示され、写真が読み込み済み */
+/** 第 index + 1 問の番号・問題名と全選択肢の写真・選択肢の説明が表示順に表示され、写真が読み込み済み */
 async function expectQuestion(page: Page, index: number) {
   const q = questions[index];
   await expect(page.getByText(`${index + 1} / ${questions.length}`)).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(q.title);
-  await expect(page.getByRole("img", { name: /^選択肢 / })).toHaveCount(q.options.length);
-  for (const o of q.options) {
-    const photo = page.getByRole("img", { name: `選択肢 ${o.label}` });
-    await expect(photo).toHaveAttribute("src", o.image);
-    await expect.poll(() => photo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
-  }
+  await expectOptions(page, q.options);
 }
 
 /** 画面ごとに、枠に収まるべき要素（名前と CSS セレクタ）と、少なくともいくつ測るか */
@@ -49,10 +45,12 @@ const LAYOUTS = {
     targets: [
       ["問題名", ".host-title"],
       ["選択肢", ".option-card"],
+      ["写真", ".option-card__photo"],
+      ["選択肢の説明", ".option-note"],
       ["メッセージ欄", ".msg"],
       ["ボタン", ".host-btns button"],
     ],
-    min: 7,
+    min: 12,
   },
   title: {
     targets: [
@@ -76,8 +74,8 @@ async function overflows(page: Page, layout: keyof typeof LAYOUTS): Promise<stri
     const inside = (r: DOMRect, box: { left: number; top: number; right: number; bottom: number }) =>
       r.left >= box.left - EPSILON && r.top >= box.top - EPSILON && r.right <= box.right + EPSILON && r.bottom <= box.bottom + EPSILON;
     const targets = selectors.flatMap(([name, selector]) =>
-      [...document.querySelectorAll(selector)].map((el): [string, Element] => [
-        `${name} ${el.getAttribute("data-label") ?? el.getAttribute("aria-label") ?? el.textContent}`,
+      [...document.querySelectorAll(selector)].map((el, i): [string, Element] => [
+        `${name} ${i + 1}（${el.getAttribute("aria-label") ?? el.textContent}）`,
         el,
       ]),
     );
@@ -91,14 +89,25 @@ async function overflows(page: Page, layout: keyof typeof LAYOUTS): Promise<stri
     const doc = document.documentElement;
     if (doc.scrollHeight > window.innerHeight) found.push(`ページが縦にスクロールする（${doc.scrollHeight} > ${window.innerHeight}）`);
     if (doc.scrollWidth > window.innerWidth) found.push(`ページが横にスクロールする（${doc.scrollWidth} > ${window.innerWidth}）`);
-    // 解説が長いと写真の行が先に 0 まで縮み、枠からはみ出す前にラベルがカードの外へ出る
-    for (const el of document.querySelectorAll(".option-card")) {
-      if (el.scrollHeight > el.clientHeight) found.push(`選択肢 ${el.getAttribute("data-label")} の中身がカードに収まらない（${el.scrollHeight} > ${el.clientHeight}）`);
+    // 解説や選択肢の説明が長いと写真の行が先に 0 まで縮み、枠からはみ出す前に選択肢の説明がカードの外へ出る
+    for (const [i, el] of [...document.querySelectorAll(".option-card")].entries()) {
+      if (el.scrollHeight > el.clientHeight) found.push(`選択肢 ${i + 1} の中身がカードに収まらない（${el.scrollHeight} > ${el.clientHeight}）`);
     }
     const msg = document.querySelector(".msg");
     if (msg !== null && msg.scrollHeight > msg.clientHeight) found.push(`メッセージ欄の中身が切れる（${msg.scrollHeight} > ${msg.clientHeight}）`);
     return found;
   }, LAYOUTS[layout]);
+}
+
+/** 写真の高さがカードの高さの半分に満たない選択肢の一覧。写真の行は minmax(0, 1fr) なので、選択肢の説明が長いと枠に収まったまま写真だけが縮む */
+function smallPhotos(page: Page): Promise<string[]> {
+  return page.locator(".option-card").evaluateAll((cards) =>
+    cards.flatMap((card, i) => {
+      const photo = card.querySelector(".option-card__photo")!.getBoundingClientRect().height;
+      const whole = card.getBoundingClientRect().height;
+      return photo * 2 >= whole ? [] : [`選択肢 ${i + 1} の写真の高さ ${photo} がカードの高さ ${whole} の半分未満`];
+    }),
+  );
 }
 
 /** 第 index + 1 問の正解発表が revealView のとおり表示されている */
@@ -107,7 +116,9 @@ async function expectRevealed(page: Page, index: number) {
   await expect(page.getByText(`${view.headline}！`)).toBeVisible();
   await expect(page.locator(".msg")).toContainText(view.explanation);
   await expect(page.getByTestId("stamp")).toHaveCount(1);
-  for (const o of view.options) {
+  for (const [i, o] of view.options.entries()) {
+    await expect(optionCard(page, i)).toHaveAttribute("data-label", o.label);
+    await expect(card(page, o.label).locator(".label-bar")).toHaveText(o.label);
     const tag = card(page, o.label).locator(".tag");
     await expect(tag).toContainText(o.name);
     await expect(tag).toContainText(o.price);
@@ -137,9 +148,13 @@ test.describe("司会画面", () => {
         await driver.next(page);
         await expectQuestion(page, i);
         expect(await overflows(page, "question"), `第 ${i + 1} 問の正解発表前`).toEqual([]);
+        expect(await smallPhotos(page), `第 ${i + 1} 問の正解発表前`).toEqual([]);
+        await expectNoLabels(page);
+        const asking = await photoBoxes(page);
         await driver.reveal(page);
         await expectRevealed(page, i);
         expect(await overflows(page, "question"), `第 ${i + 1} 問の正解発表後`).toEqual([]);
+        expect(await photoBoxes(page), `第 ${i + 1} 問の写真の位置が正解発表の前後で同じ`).toEqual(asking);
       }
       await expect(nextButton(page)).toBeDisabled();
 
