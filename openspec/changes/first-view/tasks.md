@@ -19,7 +19,7 @@
 
 ## 4. 文書と見た目の確認
 
-- [ ] 4.1 README の操作の表と本番前の確認に、タイトル画面と QR の読み取りを足す。`/host` を 1920×1080、`/` を 360×740 でスクリーンショットして目で確かめる。検証: `pnpm exec tsc --noEmit && pnpm test && pnpm e2e && openspec validate first-view` が通る
+- [x] 4.1 README の操作の表と本番前の確認に、タイトル画面と QR の読み取りを足す。`/host` を 1920×1080、`/` を 360×740 でスクリーンショットして目で確かめる。検証: `pnpm exec tsc --noEmit && pnpm test && pnpm e2e && openspec validate first-view` が通る
 
 ## Workflow follow-up
 
