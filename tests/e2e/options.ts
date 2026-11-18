@@ -1,0 +1,36 @@
+import { expect, type Page } from "@playwright/test";
+
+/** 選択肢の n 番目（表示順） */
+export const optionCard = (page: Page, index: number) => page.locator(".option-card").nth(index);
+export const optionPhoto = (page: Page, index: number) => optionCard(page, index).locator("img");
+export const optionNote = (page: Page, index: number) => optionCard(page, index).locator(".option-note");
+
+/** どの写真がどのラベルかを読み取れる要素: ラベルの帯、data-label 属性、ラベルを含む代替テキスト */
+export function labelTraces(page: Page): Promise<string[]> {
+  return page.evaluate(() => [
+    ...[...document.querySelectorAll(".label-bar")].map((el) => `.label-bar「${el.textContent}」`),
+    ...[...document.querySelectorAll("[data-label]")].map((el) => `data-label="${el.getAttribute("data-label")}"`),
+    ...[...document.querySelectorAll("img")].filter((img) => /選択肢\s*[ABC]/.test(img.alt)).map((img) => `alt="${img.alt}"`),
+  ]);
+}
+
+export async function expectNoLabels(page: Page) {
+  expect(await labelTraces(page), "画面に置かれたラベル").toEqual([]);
+}
+
+/** 選択肢が問題データの表示順に写真と選択肢の説明つきで表示され、写真が読み込み済み */
+export async function expectOptions(page: Page, options: readonly { readonly image: string; readonly note: string }[]) {
+  await expect(page.locator(".option-card")).toHaveCount(options.length);
+  for (const [i, o] of options.entries()) {
+    await expect(optionPhoto(page, i)).toHaveAttribute("src", o.image);
+    await expect(optionNote(page, i)).toHaveText(o.note);
+    await expect.poll(() => optionPhoto(page, i).evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
+  }
+}
+
+/** 表示順の写真の src と座標・大きさ */
+export function photoBoxes(page: Page) {
+  return page
+    .locator(".option-card img")
+    .evaluateAll((imgs: HTMLImageElement[]) => imgs.map((img) => ({ src: img.getAttribute("src"), box: img.getBoundingClientRect().toJSON() })));
+}

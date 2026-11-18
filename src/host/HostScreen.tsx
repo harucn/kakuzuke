@@ -106,13 +106,13 @@ function Stage({
         {question.title}
       </h1>
       <div className="host-opts">
-        {question.options.map((o) => {
-          if (revealed === null) return <OptionCard key={o.label} size="host" label={o.label} image={o.image} />;
+        {question.options.map((o, i) => {
+          if (revealed === null) return <OptionCard key={i} size="host" image={o.image} note={o.note} />;
           const shown = revealed.view.options.find((r) => r.label === o.label)!;
           // pick は外れを薄くする。order は全選択肢の順位を読ませたいので薄くしない
           const tone = shown.correct ? "correct" : question.mode === "pick" ? "dim" : undefined;
           return (
-            <OptionCard key={o.label} size="host" label={o.label} image={o.image} tone={tone}>
+            <OptionCard key={i} size="host" image={o.image} note={o.note} label={o.label} tone={tone}>
               <Tag option={shown} />
               {shown.correct && <Stamp key={revealed.run} />}
             </OptionCard>

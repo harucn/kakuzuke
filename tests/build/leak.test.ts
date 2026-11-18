@@ -68,8 +68,8 @@ function handlerOf<F extends (...args: never[]) => unknown>(hook: Hook<F>): F {
   return typeof hook === "function" ? hook : hook.handler;
 }
 
-/** プラグインのフックを client 環境として直接呼び、virtual:kakuzuke/public の load の出力をそのまま返す */
-async function publicModuleSource(): Promise<string> {
+/** プラグインのフックを client 環境として直接呼び、virtual:kakuzuke/public の load の出力を読んで返す */
+async function publicData(): Promise<PublicQuestionSet> {
   const plugin = kakuzukeQuestions();
   const context = {
     environment: { name: "client" },
@@ -84,7 +84,9 @@ async function publicModuleSource(): Promise<string> {
   if (typeof id !== "string") throw new Error(`virtual:kakuzuke/public が解決されません（${String(id)}）`);
   const loaded = await handlerOf(plugin.load).call(context as never, id);
   if (typeof loaded !== "string") throw new Error("virtual:kakuzuke/public の load が文字列を返しません");
-  return loaded;
+  const json = /^export default (.*);$/s.exec(loaded)?.[1];
+  if (json === undefined) throw new Error(`export default の形ではありません: ${loaded.slice(0, 80)}`);
+  return JSON.parse(json) as PublicQuestionSet;
 }
 
 describe("参加者に届くデータに正解情報を含めない", () => {
@@ -133,10 +135,7 @@ describe("参加者に届くデータに正解情報を含めない", () => {
   });
 
   it("公開データの構造: virtual:kakuzuke/public の出力が toPublic と一致し、キーが許可リストと完全一致する", async () => {
-    const source = await publicModuleSource();
-    const json = /^export default (.*);$/s.exec(source)?.[1];
-    if (json === undefined) throw new Error(`export default の形ではありません: ${source.slice(0, 80)}`);
-    const data = JSON.parse(json) as PublicQuestionSet;
+    const data = await publicData();
 
     expect(data).toStrictEqual(toPublic(set));
     expect(Object.keys(data).sort()).toEqual([...PUBLIC_SET_KEYS].sort());
@@ -145,7 +144,16 @@ describe("参加者に届くデータに正解情報を含めない", () => {
       for (const option of question.options) {
         expect(Object.keys(option).sort()).toEqual([...PUBLIC_OPTION_KEYS].sort());
         expect(option).not.toHaveProperty("rank");
+        expect(option.note).toEqual(expect.stringMatching(/\S/));
       }
+    }
+  });
+
+  it("参加者に届くデータの選択肢はラベルを持たない", async () => {
+    const data = await publicData();
+    expect(data.questions.length).toBeGreaterThan(0);
+    for (const question of data.questions) {
+      for (const option of question.options) expect(option).not.toHaveProperty("label");
     }
   });
 });

@@ -71,19 +71,37 @@ body {
   background-size: 2cqw 2cqw;
 }
 
+.option-card__media {
+  position: relative;
+  min-height: 0;
+}
+/* 正解発表後だけ写真の左下に重ねる。カードの行には入れないので、写真の座標と大きさは発表の前後で変わらない */
 .label-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  min-width: 1.6em;
+  padding: 0 0.3em;
   font-family: var(--label);
   font-weight: 700;
+  font-size: 3.4cqw;
   text-align: center;
   line-height: 1.3;
   color: var(--paper);
   background: var(--c, var(--green));
 }
-.option-card--host .label-bar {
-  font-size: 3.4cqw;
+
+.option-note {
+  margin: 0;
+  color: var(--ink);
+  text-align: center;
+  line-height: 1.4;
 }
-.option-card--guest .label-bar {
-  font-size: 18px;
+.option-card--host .option-note {
+  font-size: 1.8cqw;
+}
+.option-card--guest .option-note {
+  font-size: 15px;
 }
 
 /* 正解発表で選択肢に重ねる銘柄・価格（順位は b） */
@@ -149,7 +167,9 @@ body {
   color: var(--paper);
   padding: 1.2cqw 2cqw;
   font-size: 2.1cqw;
-  min-height: 7.5cqw;
+  /* 2 行ぶんを常に取り、問題の説明が解説に替わっても高さを変えない（選択肢の写真を動かさない）。
+     行の高さは 1/64px 単位に丸められて 2lh をわずかに超えることがあるので、1px の余裕を足す */
+  min-height: calc(2lh + 2.4cqw + 1px);
   line-height: 1.5;
 }
 .msg .who {
@@ -183,9 +203,9 @@ body {
   background: var(--red);
   color: var(--paper);
 }
+/* 押せる範囲を動かさない。浮かせると、ボタンの下端にあるポインタが外れて戻るのを繰り返し、ボタンが震える */
 .btn:hover {
   filter: brightness(1.06);
-  translate: 0 -1px;
 }
 .btn:focus-visible {
   outline: 3px dashed var(--red);
@@ -195,7 +215,6 @@ body {
   opacity: 0.4;
   cursor: default;
   filter: none;
-  translate: none;
 }
 
 .note {

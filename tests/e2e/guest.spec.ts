@@ -2,6 +2,7 @@ import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { secretStrings } from "../../src/question-set/model.ts";
 import { loadQuestionSet } from "../../src/question-set/vite-plugin.ts";
+import { expectNoLabels, expectOptions, optionNote, optionPhoto } from "./options.ts";
 
 // package.json の e2e がこのフィクスチャでビルドした dist に対して流す
 const set = loadQuestionSet(path.resolve(import.meta.dirname, "../.."), { contentDir: "tests/fixtures/content" });
@@ -14,14 +15,12 @@ if (questions[THREE_OPTIONS].options.length !== 3) throw new Error(`フィクス
 const prevButton = (page: Page) => page.getByRole("button", { name: "前へ" });
 const nextButton = (page: Page) => page.getByRole("button", { name: "次へ" });
 const startButton = (page: Page) => page.getByRole("button", { name: "はじめる" });
-const photo = (page: Page, label: string) => page.getByRole("img", { name: `選択肢 ${label}` });
-const labelBar = (page: Page, label: string) => page.locator(`.option-card[data-label="${label}"]`).getByText(label, { exact: true });
 
 /** タイトル画面が表示され、問題は表示されていない */
 async function expectTitle(page: Page) {
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(set.title);
   await expect(startButton(page)).toBeVisible();
-  await expect(page.getByRole("img", { name: /^選択肢 / })).toHaveCount(0);
+  await expect(page.locator(".option-card")).toHaveCount(0);
   await expect(page.getByText(/^STAGE /)).toHaveCount(0);
 }
 
@@ -39,18 +38,13 @@ async function startGuest(page: Page) {
   await expectQuestion(page, 0);
 }
 
-/** 第 index + 1 問の問題名・説明・全選択肢・番号が表示されている */
+/** 第 index + 1 問の問題名・説明・全選択肢（表示順の写真と選択肢の説明）・番号が表示されている */
 async function expectQuestion(page: Page, index: number) {
   const q = questions[index];
   await expect(page.getByRole("heading", { level: 1 })).toContainText(q.title);
   await expect(page.getByText(`${index + 1} / ${questions.length}`)).toBeVisible();
   await expect(page.getByText(q.description)).toBeVisible();
-  await expect(page.getByRole("img", { name: /^選択肢 / })).toHaveCount(q.options.length);
-  for (const o of q.options) {
-    await expect(labelBar(page, o.label)).toBeVisible();
-    await expect(photo(page, o.label)).toHaveAttribute("src", o.image);
-    await expect.poll(() => photo(page, o.label).evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
-  }
+  await expectOptions(page, q.options);
 }
 
 /** 画面に見えている文字のうち正解情報にあたるもの（埋め込みデータの <script> は innerText に入らない） */
@@ -109,9 +103,10 @@ test.describe("問題画面の表示", () => {
   test("3 択の問題で 3 つの選択肢を表示する", async ({ page }) => {
     await startGuest(page);
     await goTo(page, THREE_OPTIONS);
-    for (const label of ["A", "B", "C"]) {
-      await expect(labelBar(page, label)).toBeVisible();
-      await expect(photo(page, label)).toBeVisible();
+    for (const [i, o] of questions[THREE_OPTIONS].options.entries()) {
+      await expect(optionPhoto(page, i)).toBeVisible();
+      await expect(optionPhoto(page, i)).toHaveAttribute("src", o.image);
+      await expect(optionNote(page, i)).toHaveText(o.note);
     }
   });
 });
@@ -158,6 +153,17 @@ test.describe("正解情報を表示しない", () => {
     await expect(nextButton(page)).toBeDisabled();
   });
 
+  test("どの問題でもラベルが表示されない", async ({ page }) => {
+    await startGuest(page);
+    await expectNoLabels(page);
+    for (let i = 1; i <= last; i++) {
+      await nextButton(page).click();
+      await expectQuestion(page, i);
+      await expectNoLabels(page);
+    }
+    await expect(nextButton(page)).toBeDisabled();
+  });
+
   test("正解発表の操作がない", async ({ page }) => {
     await startGuest(page);
     await expect(page.getByRole("button", { name: "正解発表" })).toHaveCount(0);
@@ -183,8 +189,8 @@ test.describe("スマホでの表示", () => {
     expect(width.scroll).toBeLessThanOrEqual(360);
     expect(width.scroll).toBeLessThanOrEqual(width.client);
     // 表示順に下へ送る。上へ戻すと scrollIntoViewIfNeeded が 1px 未満はみ出した位置で止まる
-    for (const { label } of questions[THREE_OPTIONS].options) {
-      for (const target of [photo(page, label), labelBar(page, label)]) {
+    for (const i of questions[THREE_OPTIONS].options.keys()) {
+      for (const target of [optionPhoto(page, i), optionNote(page, i)]) {
         await target.scrollIntoViewIfNeeded();
         await expect(target).toBeInViewport({ ratio: 1 });
         expect(await target.evaluate(isUncovered), "下に留めたボタンに隠れていない").toBe(true);

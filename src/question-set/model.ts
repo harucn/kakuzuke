@@ -36,7 +36,7 @@ export type QuestionSet = {
 /** 司会画面の loader の値。ブランドは createServerFn の直列化の型検査を通らないので持たない */
 export type HostQuestionSet = Omit<QuestionSet, "__brand">;
 
-export type PublicOption = Pick<Option, "label" | "image">;
+export type PublicOption = Pick<Option, "image" | "note">;
 export type PublicQuestion = Pick<Question, "mode" | "title" | "description"> & {
   readonly options: readonly [PublicOption, PublicOption] | readonly [PublicOption, PublicOption, PublicOption];
 };
@@ -47,10 +47,10 @@ export type PublicQuestionSet = {
 
 export const PUBLIC_SET_KEYS = ["title", "questions"] as const;
 export const PUBLIC_QUESTION_KEYS = ["mode", "title", "description", "options"] as const;
-export const PUBLIC_OPTION_KEYS = ["label", "image"] as const;
+export const PUBLIC_OPTION_KEYS = ["image", "note"] as const;
 
 function toPublicOption(o: Option): PublicOption {
-  return { label: o.label, image: o.image };
+  return { image: o.image, note: o.note };
 }
 
 function toPublicQuestion(q: Question): PublicQuestion {

@@ -5,6 +5,7 @@ import { PNG } from "pngjs";
 import { STORAGE_KEY } from "../../src/host/restore.ts";
 import { answerOf, secretStrings, type Answer, type Label } from "../../src/question-set/model.ts";
 import { loadQuestionSet } from "../../src/question-set/vite-plugin.ts";
+import { expectNoLabels, expectOptions, labelTraces, optionCard, photoBoxes } from "./options.ts";
 
 // package.json の e2e がこのフィクスチャでビルドした dist に対して流す
 const set = loadQuestionSet(path.resolve(import.meta.dirname, "../.."), { contentDir: "tests/fixtures/content" });
@@ -32,19 +33,13 @@ function answerAt<M extends "pick" | "order">(index: number, mode: M) {
   return answer as Extract<Answer, { mode: M }>;
 }
 
-/** 第 index + 1 問の問題名・説明・全選択肢・番号が表示されている */
+/** 第 index + 1 問の問題名・説明・全選択肢（表示順の写真と選択肢の説明）・番号が表示されている */
 async function expectQuestion(page: Page, index: number) {
   const q = questions[index];
   await expect(page.getByRole("heading", { level: 1 })).toContainText(q.title);
   await expect(page.getByText(`${index + 1} / ${questions.length}`)).toBeVisible();
   await expect(page.getByText(q.description)).toBeVisible();
-  await expect(page.getByRole("img", { name: /^選択肢 / })).toHaveCount(q.options.length);
-  for (const o of q.options) {
-    await expect(page.getByText(o.label, { exact: true })).toBeVisible();
-    const photo = page.getByRole("img", { name: `選択肢 ${o.label}` });
-    await expect(photo).toHaveAttribute("src", o.image);
-    await expect.poll(() => photo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
-  }
+  await expectOptions(page, q.options);
 }
 
 /** 画面に見えている文字（埋め込みデータの <script> は innerText に入らない） */
@@ -58,17 +53,18 @@ function visibleAnswerInfo(page: Page) {
   );
 }
 
-/** 第 index + 1 問が正解発表前の状態で表示されている */
+/** 第 index + 1 問が正解発表前の状態（正解情報もラベルもない）で表示されている */
 async function expectAsking(page: Page, index: number) {
   await expectQuestion(page, index);
   expect(await visibleAnswerInfo(page), "正解発表前に見えている正解情報").toEqual([]);
+  await expectNoLabels(page);
 }
 
 /** タイトル画面が表示され、問題は表示されていない */
 async function expectTitle(page: Page) {
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(set.title);
   await expect(qrCode(page)).toBeVisible();
-  await expect(page.getByRole("img", { name: /^選択肢 / })).toHaveCount(0);
+  await expect(page.locator(".option-card")).toHaveCount(0);
   await expect(page.getByText(/^STAGE /)).toHaveCount(0);
   await expect(revealButton(page)).toHaveCount(0);
 }
@@ -125,6 +121,29 @@ test.describe("問題画面の表示", () => {
     // 陽性対照: 正解発表すれば同じ検査が正解情報を見つける
     await page.keyboard.press("Enter");
     await expect.poll(() => visibleAnswerInfo(page)).toEqual(expect.arrayContaining(["正解は", questions[last].explanation]));
+  });
+
+  test("正解発表前はラベルを表示しない", async ({ page }) => {
+    await openHost(page);
+    for (let i = 1; i <= last; i++) {
+      await nextButton(page).click();
+      await expectAsking(page, i);
+    }
+    // 陽性対照: 正解発表すれば同じ検査がラベルを見つける
+    await page.keyboard.press("Enter");
+    await expect.poll(() => labelTraces(page)).toEqual(
+      expect.arrayContaining(questions[last].options.flatMap((o) => [`.label-bar「${o.label}」`, `data-label="${o.label}"`])),
+    );
+  });
+
+  test("正解発表後に移動して戻るとラベルを表示しない", async ({ page }) => {
+    await openHost(page);
+    await page.keyboard.press("Space");
+    await expect(card(page, questions[0].options[0].label)).toBeVisible();
+    await nextButton(page).click();
+    await expectAsking(page, 1);
+    await prevButton(page).click();
+    await expectAsking(page, 0);
   });
 });
 
@@ -346,9 +365,33 @@ function celebrationHasDots(page: Page) {
   });
 }
 
+/** 表示順の n 番目の選択肢に、問題データのとおりのラベルが付いている */
+async function expectLabelsInDisplayOrder(page: Page, index: number, expected: readonly Label[]) {
+  expect(questions[index].options.map((o) => o.label), `フィクスチャの第 ${index + 1} 問の書いた順`).toEqual(expected);
+  for (const [i, label] of expected.entries()) {
+    await expect(optionCard(page, i)).toHaveAttribute("data-label", label);
+    await expect(optionCard(page, i).locator(".label-bar")).toHaveText(label);
+  }
+}
+
 test.describe("pick の正解発表", () => {
   const q = questions[PICK];
   const { winner } = answerAt(PICK, "pick");
+
+  test("pick の正解発表で各選択肢にラベルを表示する", async ({ page }) => {
+    await revealAt(page, PICK);
+    await expectLabelsInDisplayOrder(page, PICK, ["B", "A"]);
+  });
+
+  test("pick の正解発表で選択肢の位置は変わらない", async ({ page }) => {
+    await openHost(page);
+    const before = await photoBoxes(page);
+    expect(before.map((p) => p.src)).toEqual(q.options.map((o) => o.image));
+    await revealButton(page).click();
+    await expect(stamp(page)).toBeVisible();
+    await expect(page.getByText(q.explanation)).toBeVisible();
+    expect(await photoBoxes(page)).toEqual(before);
+  });
 
   test("pick で正解の選択肢に正解の印が付く", async ({ page }) => {
     await revealAt(page, PICK);
@@ -373,6 +416,11 @@ test.describe("pick の正解発表", () => {
 test.describe("order の正解発表", () => {
   const q = questions[ORDER];
   const { sequence } = answerAt(ORDER, "order");
+
+  test("order の正解発表で各選択肢にラベルを表示する", async ({ page }) => {
+    await revealAt(page, ORDER);
+    await expectLabelsInDisplayOrder(page, ORDER, ["C", "A", "B"]);
+  });
 
   test("order の正解発表で全選択肢に順位を表示する", async ({ page }) => {
     await revealAt(page, ORDER);
@@ -416,9 +464,11 @@ test.describe("正解発表の再演出", () => {
       Promise.all([
         page.locator(".host-opts").innerText(),
         page.locator(".msg").innerText(),
+        page.locator(".option-card").evaluateAll((cards) => cards.map((c) => [c.getAttribute("data-label"), c.querySelector(".label-bar")?.textContent])),
         stamp(page).evaluate((el) => el.closest("[data-label]")?.getAttribute("data-label")),
       ]);
     const before = await shown();
+    expect(before[2], "1 回目の正解発表後のラベル").toEqual(questions[ORDER].options.map((o) => [o.label, o.label]));
     const firstStamp = await stamp(page).elementHandle();
     await revealButton(page).click();
     await expect.poll(() => firstStamp!.evaluate((el) => el.isConnected)).toBe(false);

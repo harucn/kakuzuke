@@ -17,7 +17,7 @@
 
 公開形から `label` を外すと参加者画面が同時に壊れるので、公開形・部品・両画面・E2E を 1 つの単位で移す。
 
-- [ ] 2.1 公開形と部品を変える。`PublicOption` を `{ image, note }`、`PUBLIC_OPTION_KEYS` を `["image", "note"]` にする。design の Decisions 2・3 のとおり `OptionCard` のラベルを任意にして写真に重ね、2 行目を `.option-note` にし、`alt` を空にする。参加者画面と司会画面の発表前はラベルを渡さず、発表後だけ渡す。`key` は表示順の添字。説明の文字色の組を `TEXT_PAIRS` に足す。
+- [x] 2.1 公開形と部品を変える。`PublicOption` を `{ image, note }`、`PUBLIC_OPTION_KEYS` を `["image", "note"]` にする。design の Decisions 2・3 のとおり `OptionCard` のラベルを任意にして写真に重ね、2 行目を `.option-note` にし、`alt` を空にする。参加者画面と司会画面の発表前はラベルを渡さず、発表後だけ渡す。`key` は表示順の添字。説明の文字色の組を `TEXT_PAIRS` に足す。
   - 単体・ビルドのテスト: `tests/unit/model.test.ts` に「公開形はラベルを含まない」と、表示項目（写真・選択肢の説明）を表示順で保つこと。`tests/build/leak.test.ts:149` に `not.toHaveProperty("label")` を足し、公開データの選択肢が `note` を持つことを確かめる。
   - E2E の移行: `data-label`・`選択肢 `・`labelBar` を参照する箇所を `rg` で全件洗い出して直す。写真は表示順の添字で引き、ラベルは発表後だけ `data-label` で引く。少なくとも次を含む。
     - `guest.spec.ts:17-18`・`:24`・`:48-52`・`:112-114`・`:185-190`
