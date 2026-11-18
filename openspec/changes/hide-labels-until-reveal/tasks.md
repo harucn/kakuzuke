@@ -6,7 +6,7 @@
 
 画面はまだ今のまま（どの画面もラベルの帯を出す）。ラベルが YAML から来るようになっても、E2E はラベルで選択肢を引くので通る。
 
-- [ ] 1.1 design の Decisions 1 のとおり `Option` に `label`（作者が書く）と `note` を足す。`parseQuestionSet` に `label`・`note` のスキーマと形のエラー文、`label-permutation` 規則、`note` への `public-text-leak` 検査、写真のファイル名を探す文字列に足すことを入れる。`toQuestionSet` は書いた順のまま YAML の `label` を使う。同じコミットで次を移す。
+- [x] 1.1 design の Decisions 1 のとおり `Option` に `label`（作者が書く）と `note` を足す。`parseQuestionSet` に `label`・`note` のスキーマと形のエラー文、`label-permutation` 規則、`note` への `public-text-leak` 検査、写真のファイル名を探す文字列に足すことを入れる。`toQuestionSet` は書いた順のまま YAML の `label` を使う。同じコミットで次を移す。
   - データ: `content/questions.yaml`（書いた順に A・B・C）、`tests/fixtures/{content,broken,plugin}`。`tests/fixtures/content` は pick の第 1 問を B・A、order の第 2 問を C・A・B の順に書き直し、解説の文のラベルも合わせる。`tests/fixtures/broken` は期待する 3 件（rank 重複・写真欠落・空の解説）以外のエラーが出ないよう `label`・`note` を足す。
   - テスト: `tests/unit/fixtures.ts`、型付きの `Option` を直書きしている `tests/unit/model.test.ts:23-47`・`tests/unit/reveal.test.ts:13-26`、`tests/unit/parse.test.ts` の正常系の入力。`parse.test.ts:146`「ラベルは並び順に A・B・C が付く」は「ラベルは書いた値になり表示順は書いた順になる」に置き換える。
   - README: 書き方の例と項目の説明（`label`・`note`）。

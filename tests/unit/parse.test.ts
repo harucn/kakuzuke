@@ -12,19 +12,19 @@ const images = new Map([
   ["国産牛.jpg", imageUrl("/images/eee.jpg")],
 ]);
 
-const table = { image: "テーブルワイン.jpg", rank: 2, name: "テーブルワイン", price: "1本 1,000円" };
-const bordeaux = { image: "ボルドー.jpg", rank: 1, name: "ボルドーの赤", price: "1本 5万円" };
+const table = { label: "A", image: "テーブルワイン.jpg", note: "チリ産の赤ワイン", rank: 2, name: "テーブルワイン", price: "1本 1,000円" };
+const bordeaux = { label: "B", image: "ボルドー.jpg", note: "フランス産の赤ワイン", rank: 1, name: "シャトー・マルゴー", price: "1本 5万円" };
 const wine = {
   mode: "pick",
   title: "ワイン",
   description: "高いワインはどちら？",
-  explanation: "B は 1本 5万円のボルドー。A はスーパーで買えるテーブルワインでした。",
+  explanation: "B は 1本 5万円のシャトー・マルゴー。A はスーパーで買えるテーブルワインでした。",
   options: [table, bordeaux],
 };
 
-const a5 = { image: "A5.jpg", rank: 1, name: "A5 和牛", price: "100g 5,000円" };
-const imported = { image: "輸入牛.jpg", rank: 3, name: "輸入牛", price: "100g 300円" };
-const domestic = { image: "国産牛.jpg", rank: 2, name: "国産牛", price: "100g 1,000円" };
+const a5 = { label: "A", image: "A5.jpg", note: "霜降りの牛肉", rank: 1, name: "A5 和牛", price: "100g 5,000円" };
+const imported = { label: "B", image: "輸入牛.jpg", note: "赤身の牛肉", rank: 3, name: "輸入牛", price: "100g 300円" };
+const domestic = { label: "C", image: "国産牛.jpg", note: "脂の多い牛肉", rank: 2, name: "国産牛", price: "100g 1,000円" };
 const beef = {
   mode: "order",
   title: "牛肉",
@@ -53,10 +53,10 @@ describe("問題セットのデータ形式", () => {
             mode: "pick",
             title: "ワイン",
             description: "高いワインはどちら？",
-            explanation: "B は 1本 5万円のボルドー。A はスーパーで買えるテーブルワインでした。",
+            explanation: "B は 1本 5万円のシャトー・マルゴー。A はスーパーで買えるテーブルワインでした。",
             options: [
-              { label: "A", image: "/images/aaa.jpg", rank: 2, name: "テーブルワイン", price: "1本 1,000円" },
-              { label: "B", image: "/images/bbb.jpg", rank: 1, name: "ボルドーの赤", price: "1本 5万円" },
+              { label: "A", image: "/images/aaa.jpg", note: "チリ産の赤ワイン", rank: 2, name: "テーブルワイン", price: "1本 1,000円" },
+              { label: "B", image: "/images/bbb.jpg", note: "フランス産の赤ワイン", rank: 1, name: "シャトー・マルゴー", price: "1本 5万円" },
             ],
           },
           {
@@ -65,9 +65,9 @@ describe("問題セットのデータ形式", () => {
             description: "高い順に並べよ",
             explanation: "A が A5 ランク。",
             options: [
-              { label: "A", image: "/images/ccc.jpg", rank: 1, name: "A5 和牛", price: "100g 5,000円" },
-              { label: "B", image: "/images/ddd.jpg", rank: 3, name: "輸入牛", price: "100g 300円" },
-              { label: "C", image: "/images/eee.jpg", rank: 2, name: "国産牛", price: "100g 1,000円" },
+              { label: "A", image: "/images/ccc.jpg", note: "霜降りの牛肉", rank: 1, name: "A5 和牛", price: "100g 5,000円" },
+              { label: "B", image: "/images/ddd.jpg", note: "赤身の牛肉", rank: 3, name: "輸入牛", price: "100g 300円" },
+              { label: "C", image: "/images/eee.jpg", note: "脂の多い牛肉", rank: 2, name: "国産牛", price: "100g 1,000円" },
             ],
           },
         ],
@@ -117,6 +117,22 @@ describe("問題セットのデータ形式", () => {
     expect(codesAndPaths(result)).toStrictEqual([["shape", ["questions", 0, "options", 1, field]]]);
   });
 
+  it.each([
+    ["空文字", ""],
+    ["空白だけ", " 　"],
+  ])("選択肢の説明が空の選択肢は検証に失敗する（%s）", (_, value) => {
+    const result = parseQuestionSet({ title, questions: [{ ...wine, options: [table, { ...bordeaux, note: value }] }] }, images);
+    expect(codesAndPaths(result)).toStrictEqual([["shape", ["questions", 0, "options", 1, "note"]]]);
+  });
+
+  it("選択肢の説明がない選択肢は検証に失敗する", () => {
+    const { note: _, ...withoutNote } = bordeaux;
+    const issues = issuesOf(parseQuestionSet({ title, questions: [{ ...wine, options: [table, withoutNote] }] }, images));
+    expect(issues.map((i) => [i.code, i.path, i.message])).toStrictEqual([
+      ["shape", ["questions", 0, "options", 1, "note"], "必須の項目です"],
+    ]);
+  });
+
   it("複数の誤りはまとめて報告される", () => {
     const broken = {
       ...beef,
@@ -131,7 +147,7 @@ describe("問題セットのデータ形式", () => {
   });
 });
 
-describe("選択肢の数とラベル", () => {
+describe("選択肢の数と作者が付けるラベル", () => {
   it("選択肢が 1 個の問題は検証に失敗する", () => {
     const result = parseQuestionSet({ title, questions: [{ ...wine, options: [{ ...bordeaux }] }] }, images);
     expect(codesAndPaths(result)).toStrictEqual([["shape", ["questions", 0, "options"]]]);
@@ -143,13 +159,49 @@ describe("選択肢の数とラベル", () => {
     expect(codesAndPaths(result)).toStrictEqual([["shape", ["questions", 0, "options"]]]);
   });
 
-  it("ラベルは並び順に A・B・C が付く", () => {
-    const result = parseQuestionSet({ title, questions: [beef] }, images);
+  it("ラベルがない選択肢は検証に失敗する", () => {
+    const { label: _, ...unlabeled } = bordeaux;
+    const issues = issuesOf(parseQuestionSet({ title, questions: [{ ...wine, options: [table, unlabeled] }] }, images));
+    expect(issues.map((i) => [i.code, i.path, i.message])).toStrictEqual([
+      ["shape", ["questions", 0, "options", 1, "label"], "必須の項目です"],
+    ]);
+  });
+
+  it("A・B・C 以外のラベルは検証に失敗する", () => {
+    const issues = issuesOf(parseQuestionSet({ title, questions: [{ ...wine, options: [table, { ...bordeaux, label: "D" }] }] }, images));
+    expect(issues.map((i) => [i.code, i.path])).toStrictEqual([["shape", ["questions", 0, "options", 1, "label"]]]);
+    expect(issues[0]!.message).toContain("D");
+  });
+
+  it("ラベルが重複する問題は検証に失敗する", () => {
+    const result = parseQuestionSet({ title, questions: [{ ...wine, options: [table, { ...bordeaux, label: "A" }] }] }, images);
+    expect(issuesOf(result)).toStrictEqual([
+      {
+        code: "label-permutation",
+        path: ["questions", 0, "options"],
+        message: "label は A〜B を 1 回ずつ使ってください（A, A）",
+      },
+    ]);
+  });
+
+  it("選択肢数を超えるラベルを使う問題は検証に失敗する", () => {
+    const result = parseQuestionSet({ title, questions: [{ ...wine, options: [table, { ...bordeaux, label: "C" }] }] }, images);
+    expect(issuesOf(result)).toStrictEqual([
+      {
+        code: "label-permutation",
+        path: ["questions", 0, "options"],
+        message: "label は A〜B を 1 回ずつ使ってください（A, C）",
+      },
+    ]);
+  });
+
+  it("ラベルは書いた値になり表示順は書いた順になる", () => {
+    const result = parseQuestionSet({ title, questions: [{ ...beef, options: [imported, domestic, a5] }] }, images);
     if (!result.ok) throw new Error(formatIssues(result.issues));
     expect(result.set.questions[0].options.map((o) => [o.label, o.name])).toStrictEqual([
-      ["A", "A5 和牛"],
       ["B", "輸入牛"],
       ["C", "国産牛"],
+      ["A", "A5 和牛"],
     ]);
   });
 });
@@ -202,20 +254,42 @@ describe("問題名と説明に正解情報を含めない", () => {
   });
 
   it("問題名に銘柄を含む問題は検証に失敗する", () => {
-    const result = parseQuestionSet({ title, questions: [wine, { ...beef, title: "ボルドーの赤に合う牛肉" }] }, images);
+    const result = parseQuestionSet({ title, questions: [wine, { ...beef, title: "シャトー・マルゴーに合う牛肉" }] }, images);
     expect(issuesOf(result)).toStrictEqual([
       {
         code: "public-text-leak",
         path: ["questions", 1, "title"],
-        message: "参加者に見える文に銘柄「ボルドーの赤」が含まれています",
+        message: "参加者に見える文に銘柄「シャトー・マルゴー」が含まれています",
       },
     ]);
   });
 
   it("タイトルに銘柄を含む問題セットは検証に失敗する", () => {
-    const result = parseQuestionSet({ title: "ボルドーの赤で乾杯の会", questions: [wine] }, images);
+    const result = parseQuestionSet({ title: "シャトー・マルゴーで乾杯の会", questions: [wine] }, images);
     expect(issuesOf(result)).toStrictEqual([
-      { code: "public-text-leak", path: ["title"], message: "参加者に見える文に銘柄「ボルドーの赤」が含まれています" },
+      { code: "public-text-leak", path: ["title"], message: "参加者に見える文に銘柄「シャトー・マルゴー」が含まれています" },
+    ]);
+  });
+
+  it("選択肢の説明に銘柄を含む問題は検証に失敗する", () => {
+    const options = [{ ...table, note: "シャトー・マルゴーに似た赤ワイン" }, bordeaux];
+    expect(issuesOf(parseQuestionSet({ title, questions: [{ ...wine, options }] }, images))).toStrictEqual([
+      {
+        code: "public-text-leak",
+        path: ["questions", 0, "options", 0, "note"],
+        message: "参加者に見える文に銘柄「シャトー・マルゴー」が含まれています",
+      },
+    ]);
+  });
+
+  it("選択肢の説明に写真のファイル名を含む問題は検証に失敗する", () => {
+    const options = [table, { ...bordeaux, note: "フランス・ボルドーの赤ワイン" }];
+    expect(issuesOf(parseQuestionSet({ title, questions: [{ ...wine, options }] }, images))).toStrictEqual([
+      {
+        code: "public-text-leak",
+        path: ["questions", 0, "options", 1, "note"],
+        message: "参加者に見える文に写真のファイル名「ボルドー」が含まれています",
+      },
     ]);
   });
 

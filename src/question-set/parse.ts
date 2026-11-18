@@ -9,7 +9,7 @@ import {
   type SecretKind,
 } from "./model.ts";
 
-export type IssueCode = "shape" | "rank-permutation" | "image-missing" | "public-text-leak";
+export type IssueCode = "shape" | "rank-permutation" | "label-permutation" | "image-missing" | "public-text-leak";
 export interface Issue {
   readonly code: IssueCode;
   readonly path: readonly (string | number)[];
@@ -24,8 +24,15 @@ const typed = (kind: string) => ({
     issue.input === undefined ? "必須の項目です" : `${kind}で書いてください`,
 });
 
+const oneOf = <const T extends readonly [string, ...string[]]>(values: T, rule: string) =>
+  z.enum(values, {
+    error: (issue) => (issue.input === undefined ? "必須の項目です" : `${rule}（${String(issue.input)}）`),
+  });
+
+const LABELS = ["A", "B", "C"] as const satisfies readonly Label[];
 const text = z.string(typed("文字列")).trim().min(1, "空にはできません");
 const rank = z.number(typed("数値")).int("整数で書いてください");
+const label = oneOf(LABELS, "label は A・B・C のどれかにしてください");
 const optionCount = "選択肢は 2 個か 3 個にしてください";
 
 const setSchema = z.object(
@@ -35,15 +42,18 @@ const setSchema = z.object(
       .array(
         z.object(
           {
-            mode: z.enum(["pick", "order"], {
-              error: (issue) =>
-                issue.input === undefined ? "必須の項目です" : `mode は pick か order にしてください（${String(issue.input)}）`,
-            }),
+            mode: oneOf(["pick", "order"], "mode は pick か order にしてください"),
             title: text,
             description: text,
             explanation: text,
             options: z
-              .array(z.object({ image: text, rank, name: text, price: text }, typed("{ image, rank, name, price } の形")), typed("リスト"))
+              .array(
+                z.object(
+                  { label, image: text, note: text, rank, name: text, price: text },
+                  typed("{ label, image, note, rank, name, price } の形"),
+                ),
+                typed("リスト"),
+              )
               .min(2, optionCount)
               .max(3, optionCount),
           },
@@ -57,8 +67,8 @@ const setSchema = z.object(
 );
 type ValidInput = z.output<typeof setSchema>;
 
-const LABELS: readonly Label[] = ["A", "B", "C"];
-const KIND_NAMES: Record<SecretKind, string> = { name: "銘柄", price: "価格", explanation: "解説" };
+type LeakKind = SecretKind | "image";
+const KIND_NAMES: Record<LeakKind, string> = { name: "銘柄", price: "価格", explanation: "解説", image: "写真のファイル名" };
 
 export function parseQuestionSet(input: unknown, images: ReadonlyMap<string, ImageUrl>): ParseResult {
   const shape = setSchema.safeParse(input);
@@ -109,8 +119,9 @@ function* crossFieldIssues(input: unknown, images: ReadonlyMap<string, ImageUrl>
       }
     }
 
+    const counted = options.length >= 2 && options.length <= 3;
     const ranks = options.map((o) => valid(rank, at(o, "rank")));
-    if (options.length >= 2 && options.length <= 3 && ranks.every((r) => r !== undefined)) {
+    if (counted && ranks.every((r) => r !== undefined)) {
       const sorted = [...ranks].sort((a, b) => a - b);
       if (sorted.some((r, k) => r !== k + 1)) {
         yield {
@@ -121,13 +132,28 @@ function* crossFieldIssues(input: unknown, images: ReadonlyMap<string, ImageUrl>
       }
     }
 
+    const labels = options.map((o) => valid(label, at(o, "label")));
+    if (counted && labels.every((l) => l !== undefined)) {
+      const sorted = [...labels].sort();
+      if (sorted.some((l, k) => l !== LABELS[k])) {
+        yield {
+          code: "label-permutation",
+          path: ["questions", i, "options"],
+          message: `label は A〜${LABELS[labels.length - 1]} を 1 回ずつ使ってください（${labels.join(", ")}）`,
+        };
+      }
+    }
+
     for (const field of ["title", "description"] as const) {
       yield* leaksIn(at(q, field), ["questions", i, field], secrets);
+    }
+    for (const [j, o] of options.entries()) {
+      yield* leaksIn(at(o, "note"), ["questions", i, "options", j, "note"], secrets);
     }
   }
 }
 
-function* leaksIn(value: unknown, path: Issue["path"], secrets: ReadonlyMap<string, SecretKind>): Generator<Issue> {
+function* leaksIn(value: unknown, path: Issue["path"], secrets: ReadonlyMap<string, LeakKind>): Generator<Issue> {
   const shown = valid(text, value);
   if (shown === undefined) return;
   for (const [secret, kind] of secrets) {
@@ -137,8 +163,8 @@ function* leaksIn(value: unknown, path: Issue["path"], secrets: ReadonlyMap<stri
   }
 }
 
-function secretsIn(questions: readonly unknown[]): ReadonlyMap<string, SecretKind> {
-  const secrets = new Map<string, SecretKind>();
+function secretsIn(questions: readonly unknown[]): ReadonlyMap<string, LeakKind> {
+  const secrets = new Map<string, LeakKind>();
   for (const q of questions) {
     const fields = secretFields({
       explanation: at(q, "explanation"),
@@ -147,6 +173,13 @@ function secretsIn(questions: readonly unknown[]): ReadonlyMap<string, SecretKin
     for (const { kind, value } of fields) {
       const secret = valid(text, value);
       if (secret !== undefined && !secrets.has(secret)) secrets.set(secret, kind);
+    }
+  }
+  // 銘柄と同じ名前の写真は銘柄として報告するので、写真のファイル名は最後に足す
+  for (const q of questions) {
+    for (const o of items(at(q, "options"))) {
+      const base = valid(text, valid(text, at(o, "image"))?.replace(/\.[^.]*$/, ""));
+      if (base !== undefined && !secrets.has(base)) secrets.set(base, "image");
     }
   }
   return secrets;
@@ -172,9 +205,10 @@ function toQuestionSet(input: ValidInput, images: ReadonlyMap<string, ImageUrl>)
     title: q.title,
     description: q.description,
     explanation: q.explanation,
-    options: q.options.map((o, j) => ({
-      label: LABELS[j],
+    options: q.options.map((o) => ({
+      label: o.label,
       image: images.get(o.image)!,
+      note: o.note,
       rank: o.rank as Rank,
       name: o.name,
       price: o.price,

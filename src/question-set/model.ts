@@ -5,14 +5,18 @@ export type Rank = 1 | 2 | 3;
 export type ImageUrl = string & { readonly __brand: "ImageUrl" };
 
 export interface Option {
+  /** 作者が書く。表示順とは無関係 */
   readonly label: Label;
   readonly image: ImageUrl;
+  /** 選択肢の説明 */
+  readonly note: string;
   /** 1 = 最も高価。正解の唯一の情報源 */
   readonly rank: Rank;
   readonly name: string;
   /** 表示用の文字列。比較しない */
   readonly price: string;
 }
+/** 表示順 */
 export type Options = readonly [Option, Option] | readonly [Option, Option, Option];
 
 export interface Question {

@@ -182,7 +182,8 @@ test.describe("スマホでの表示", () => {
     }));
     expect(width.scroll).toBeLessThanOrEqual(360);
     expect(width.scroll).toBeLessThanOrEqual(width.client);
-    for (const label of ["A", "B", "C"]) {
+    // 表示順に下へ送る。上へ戻すと scrollIntoViewIfNeeded が 1px 未満はみ出した位置で止まる
+    for (const { label } of questions[THREE_OPTIONS].options) {
       for (const target of [photo(page, label), labelBar(page, label)]) {
         await target.scrollIntoViewIfNeeded();
         await expect(target).toBeInViewport({ ratio: 1 });
