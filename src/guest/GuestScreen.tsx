@@ -19,19 +19,20 @@ function useHydrated(): boolean {
 export function GuestScreen({ set }: { readonly set: PublicQuestionSet }) {
   const [index, setIndex] = useState(0);
   const hydrated = useHydrated();
-  const question = set[index];
-  const { canPrev, canNext } = boundsOf(index, set.length);
-  for (const option of set[index + 1]?.options ?? []) preload(option.image, { as: "image" });
+  const { questions } = set;
+  const question = questions[index];
+  const { canPrev, canNext } = boundsOf(index, questions.length);
+  for (const option of questions[index + 1]?.options ?? []) preload(option.image, { as: "image" });
 
   const go = (step: Step) => {
-    setIndex(move(index, step, set.length));
+    setIndex(move(index, step, questions.length));
     window.scrollTo(0, 0);
   };
 
   return (
     <main className="guest" aria-label="参加者画面" data-leak-canary={LEAK_CANARY}>
       <div className="guest-bar">
-        <span>STAGE {positionText(index, set.length)}</span>
+        <span>STAGE {positionText(index, questions.length)}</span>
         <span>KAKUZUKE</span>
       </div>
       <h1 className="guest-title">

@@ -1,7 +1,7 @@
 import { useEffect, useReducer, useRef, type Dispatch } from "react";
 import { preload } from "react-dom";
 import { boundsOf, positionText } from "../deck/cursor.ts";
-import type { Question } from "../question-set/model.ts";
+import type { HostQuestionSet } from "../question-set/model.ts";
 import { OptionCard } from "../ui/OptionCard.tsx";
 import { Celebration } from "./Celebration.tsx";
 import { toggleFullscreen, useIsFullscreen } from "./fullscreen.ts";
@@ -10,15 +10,12 @@ import { initialHostState, step, type HostEvent, type HostState } from "./machin
 import { loadIndex, saveIndex } from "./restore.ts";
 import { revealView, type RevealedOption } from "./reveal.ts";
 
-/** /host の loader の値。ブランドは createServerFn の直列化を通らないので持たない（design の Risks 確定（3.2）） */
-export type HostQuestionSet = readonly [Question, ...Question[]];
-
 type ShownState = Exclude<HostState, { readonly phase: "booting" }>;
 
 export function HostScreen({ set }: { readonly set: HostQuestionSet }) {
-  const [state, dispatch] = useReducer((s: HostState, e: HostEvent) => step(s, e, set.length), initialHostState);
+  const [state, dispatch] = useReducer((s: HostState, e: HostEvent) => step(s, e, set.questions.length), initialHostState);
   useEffect(() => installHostKeys(window, dispatch), []);
-  useEffect(() => dispatch({ type: "restore", index: loadIndex(set.length) }), [set.length]);
+  useEffect(() => dispatch({ type: "restore", index: loadIndex(set.questions.length) }), [set.questions.length]);
   const index = state.phase === "booting" ? null : state.index;
   useEffect(() => {
     if (index !== null) saveIndex(index);
@@ -49,9 +46,10 @@ function Stage({
 }) {
   const fullscreen = useIsFullscreen();
   const { index } = state;
-  const question = set[index];
-  const { canPrev, canNext } = boundsOf(index, set.length);
-  for (const option of set[index + 1]?.options ?? []) preload(option.image, { as: "image" });
+  const { questions } = set;
+  const question = questions[index];
+  const { canPrev, canNext } = boundsOf(index, questions.length);
+  for (const option of questions[index + 1]?.options ?? []) preload(option.image, { as: "image" });
 
   const revealed = state.phase === "revealed" ? { view: revealView(question), run: state.run } : null;
   const message =
@@ -62,7 +60,7 @@ function Stage({
   return (
     <>
       <div className="host-bar">
-        <span>STAGE {positionText(index, set.length)}</span>
+        <span>STAGE {positionText(index, questions.length)}</span>
         <span className="hearts" aria-hidden="true">
           ♥ ♥ ♥
         </span>

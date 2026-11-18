@@ -7,6 +7,7 @@ import { LEAK_CANARY } from "../../src/guest/leak-canary";
 import {
   PUBLIC_OPTION_KEYS,
   PUBLIC_QUESTION_KEYS,
+  PUBLIC_SET_KEYS,
   secretStrings,
   toPublic,
   type PublicQuestionSet,
@@ -52,6 +53,7 @@ function leaksIn(file: ClientFile, secrets: readonly string[]): string[] {
 
 // ビルドと同じ問題ファイルを読む。KAKUZUKE_CONTENT_DIR の扱いはプラグインの locate と同じ
 const set = loadQuestionSet(root);
+const { questions } = set;
 const secrets = secretStrings(set);
 const contentDir = path.resolve(root, process.env.KAKUZUKE_CONTENT_DIR ?? "content");
 const authored = parseYaml(readFileSync(path.join(contentDir, "questions.yaml"), "utf8")) as {
@@ -87,7 +89,7 @@ async function publicModuleSource(): Promise<string> {
 
 describe("参加者に届くデータに正解情報を含めない", () => {
   it("秘密リストが空でなく件数が一致する", () => {
-    const expected = new Set(set.flatMap((q) => [q.explanation, ...q.options.flatMap((o) => [o.name, o.price])]));
+    const expected = new Set(questions.flatMap((q) => [q.explanation, ...q.options.flatMap((o) => [o.name, o.price])]));
     expect(secrets.length).toBeGreaterThan(0);
     expect(secrets).toHaveLength(expected.size);
     expect(new Set(secrets)).toEqual(expected);
@@ -125,7 +127,7 @@ describe("参加者に届くデータに正解情報を含めない", () => {
   });
 
   it("本検査: dist/client/images の画像は指定された写真の種類と一致する", () => {
-    const published = [...new Set(set.flatMap((q) => q.options.map((o) => o.image.slice(1))))].sort();
+    const published = [...new Set(questions.flatMap((q) => q.options.map((o) => o.image.slice(1))))].sort();
     const emitted = files.filter((f) => f.path.startsWith("images/")).map((f) => f.path).sort();
     expect(emitted).toEqual(published);
   });
@@ -137,7 +139,8 @@ describe("参加者に届くデータに正解情報を含めない", () => {
     const data = JSON.parse(json) as PublicQuestionSet;
 
     expect(data).toStrictEqual(toPublic(set));
-    for (const question of data) {
+    expect(Object.keys(data).sort()).toEqual([...PUBLIC_SET_KEYS].sort());
+    for (const question of data.questions) {
       expect(Object.keys(question).sort()).toEqual([...PUBLIC_QUESTION_KEYS].sort());
       for (const option of question.options) {
         expect(Object.keys(option).sort()).toEqual([...PUBLIC_OPTION_KEYS].sort());

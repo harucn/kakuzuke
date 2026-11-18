@@ -11,8 +11,9 @@ import { findSecrets } from "../leak.ts";
 // 期待値はローカルの問題ファイルから作る。BASE_URL でデプロイ先に流すときは、デプロイしたものと同じ content であること
 const root = path.resolve(import.meta.dirname, "../..");
 const set = loadQuestionSet(root);
+const { questions } = set;
 const secrets = secretStrings(set);
-const last = set.length - 1;
+const last = questions.length - 1;
 const contentDir = path.resolve(root, process.env.KAKUZUKE_CONTENT_DIR ?? "content");
 const authored = parseYaml(readFileSync(path.join(contentDir, "questions.yaml"), "utf8")) as {
   readonly questions: readonly { readonly options: readonly { readonly image: string }[] }[];
@@ -31,8 +32,8 @@ const card = (page: Page, label: Label) => page.locator(`.option-card[data-label
 
 /** 第 index + 1 問の番号・問題名と全選択肢の写真が表示され、写真が読み込み済み */
 async function expectQuestion(page: Page, index: number) {
-  const q = set[index];
-  await expect(page.getByText(`${index + 1} / ${set.length}`)).toBeVisible();
+  const q = questions[index];
+  await expect(page.getByText(`${index + 1} / ${questions.length}`)).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(q.title);
   await expect(page.getByRole("img", { name: /^選択肢 / })).toHaveCount(q.options.length);
   for (const o of q.options) {
@@ -81,7 +82,7 @@ async function overflows(page: Page): Promise<string[]> {
 
 /** 第 index + 1 問の正解発表が revealView のとおり表示されている */
 async function expectRevealed(page: Page, index: number) {
-  const view = revealView(set[index]);
+  const view = revealView(questions[index]);
   await expect(page.getByText(`${view.headline}！`)).toBeVisible();
   await expect(page.locator(".msg")).toContainText(view.explanation);
   await expect(page.getByTestId("stamp")).toHaveCount(1);
@@ -164,7 +165,7 @@ test("参加者画面を最後まで進める間の応答に正解情報がな�
   expect(leaks).toEqual([]);
 
   const imageUrls = responses.filter((r) => (r.headers()["content-type"] ?? "").startsWith("image/")).map((r) => r.url());
-  const shown = new Set(set.flatMap((q) => q.options.map((o) => new URL(o.image, page.url()).href)));
+  const shown = new Set(questions.flatMap((q) => q.options.map((o) => new URL(o.image, page.url()).href)));
   expect(imageUrls, "全問題の写真を受け取っている").toEqual(expect.arrayContaining([...shown]));
   const named = imageUrls.flatMap((url) => {
     const decoded = decodeURIComponent(url).normalize("NFC");

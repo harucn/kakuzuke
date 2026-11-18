@@ -5,6 +5,6 @@ export function imageUrl(url: string): ImageUrl {
   return url as ImageUrl;
 }
 
-export function questionSet(...questions: readonly [Question, ...Question[]]): QuestionSet {
-  return questions as QuestionSet;
+export function questionSet(title: string, ...questions: readonly [Question, ...Question[]]): QuestionSet {
+  return { title, questions } as QuestionSet;
 }

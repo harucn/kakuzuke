@@ -85,7 +85,7 @@ function compile(files: ContentFiles): Compiled {
   if (!result.ok) return { ok: false, message: `✗ ${files.label}\n${formatIssues(result.issues)}` };
 
   const fileOf = new Map([...sources.values()].map((source) => [source.url, source.file]));
-  const published = new Map(result.set.flatMap((q) => q.options.map((o) => [o.image, fileOf.get(o.image)!] as const)));
+  const published = new Map(result.set.questions.flatMap((q) => q.options.map((o) => [o.image, fileOf.get(o.image)!] as const)));
   return { ok: true, set: result.set, published };
 }
 

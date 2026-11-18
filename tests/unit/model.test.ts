@@ -3,11 +3,14 @@ import {
   answerOf,
   PUBLIC_OPTION_KEYS,
   PUBLIC_QUESTION_KEYS,
+  PUBLIC_SET_KEYS,
   secretStrings,
   toPublic,
   type PublicOption,
   type PublicQuestion,
+  type PublicQuestionSet,
   type Question,
+  type QuestionSet,
 } from "../../src/question-set/model";
 import { imageUrl, questionSet } from "./fixtures";
 
@@ -56,10 +59,10 @@ describe("answerOf", () => {
 });
 
 describe("toPublic", () => {
-  const publicSet = toPublic(questionSet(wine, beef, water));
+  const publicSet = toPublic(questionSet("2026 忘年会 格付けチェック", wine, beef, water));
 
   it("公開形は rank・name・price を含まない", () => {
-    for (const q of publicSet) {
+    for (const q of publicSet.questions) {
       for (const o of q.options) {
         expect(o).not.toHaveProperty("rank");
         expect(o).not.toHaveProperty("name");
@@ -69,13 +72,14 @@ describe("toPublic", () => {
   });
 
   it("公開形は解説を含まない", () => {
-    for (const q of publicSet) {
+    for (const q of publicSet.questions) {
       expect(q).not.toHaveProperty("explanation");
     }
   });
 
   it("公開形は出題順と表示項目を保つ", () => {
-    expect(publicSet).toStrictEqual([
+    expect(publicSet.title).toBe("2026 忘年会 格付けチェック");
+    expect(publicSet.questions).toStrictEqual([
       {
         mode: "pick",
         title: "ワイン",
@@ -113,7 +117,10 @@ describe("toPublic", () => {
       internalNote: "秘密のメモ",
       options: beef.options.map((o) => ({ ...o, supplier: "秘密の仕入れ先" })),
     } as unknown as Question;
-    for (const q of toPublic(questionSet(wine, withExtra))) {
+    const withExtraSet = { ...questionSet("会", wine, withExtra), organizerMemo: "秘密のメモ" } as QuestionSet;
+    const projected = toPublic(withExtraSet);
+    expect(Object.keys(projected).sort()).toStrictEqual([...PUBLIC_SET_KEYS].sort());
+    for (const q of projected.questions) {
       expect(Object.keys(q).sort()).toStrictEqual([...PUBLIC_QUESTION_KEYS].sort());
       for (const o of q.options) {
         expect(Object.keys(o).sort()).toStrictEqual([...PUBLIC_OPTION_KEYS].sort());
@@ -122,6 +129,7 @@ describe("toPublic", () => {
   });
 
   it("allowlists name exactly the keys of the public types", () => {
+    expectTypeOf<(typeof PUBLIC_SET_KEYS)[number]>().toEqualTypeOf<keyof PublicQuestionSet>();
     expectTypeOf<(typeof PUBLIC_QUESTION_KEYS)[number]>().toEqualTypeOf<keyof PublicQuestion>();
     expectTypeOf<(typeof PUBLIC_OPTION_KEYS)[number]>().toEqualTypeOf<keyof PublicOption>();
   });
@@ -129,7 +137,7 @@ describe("toPublic", () => {
 
 describe("secretStrings", () => {
   it("returns every option name and price and every explanation, without duplicates", () => {
-    expect(secretStrings(questionSet(wine, beef, water))).toStrictEqual([
+    expect(secretStrings(questionSet("会", wine, beef, water))).toStrictEqual([
       "テーブルワイン",
       "1本 1,000円",
       "ボルドーの赤",

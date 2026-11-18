@@ -4,7 +4,7 @@
 
 ## 1. 問題セットにタイトルを足す
 
-- [ ] 1.1 design の Decisions 1 のとおり `QuestionSet`・`PublicQuestionSet`・`HostQuestionSet` を `{ title, questions }` の形にし、`PUBLIC_SET_KEYS` と `toPublic` のタイトルの射影を足す。`parseQuestionSet` に必須の `title` と、タイトルへの `public-text-leak` 検査を足す。呼び出し側（vite-plugin・`virtual-kakuzuke.d.ts`・`host-data.functions.ts`・両画面・テスト・`tests/fixtures/{content,broken,plugin}`・`content/questions.yaml`・README の例と箇条書き）を同じコミットで移す。画面の振る舞いはまだ変えない（両画面とも第 1 問から始まる）。`tests/unit/parse.test.ts` に question-set spec の「タイトルがない」「タイトルが空」「タイトルに銘柄を含む」の Scenario、`tests/unit/model.test.ts` と `tests/build/leak.test.ts` に公開形の最上位のキーが `PUBLIC_SET_KEYS` と完全一致することと、公開形がタイトルを保つことを書く。検証: `pnpm exec tsc --noEmit && pnpm test && pnpm e2e` が通る（既存の E2E が変更なしで通ることで、移行が振る舞いを変えていないと確かめる）
+- [x] 1.1 design の Decisions 1 のとおり `QuestionSet`・`PublicQuestionSet`・`HostQuestionSet` を `{ title, questions }` の形にし、`PUBLIC_SET_KEYS` と `toPublic` のタイトルの射影を足す。`parseQuestionSet` に必須の `title` と、タイトルへの `public-text-leak` 検査を足す。呼び出し側（vite-plugin・`virtual-kakuzuke.d.ts`・`host-data.functions.ts`・両画面・テスト・`tests/fixtures/{content,broken,plugin}`・`content/questions.yaml`・README の例と箇条書き）を同じコミットで移す。画面の振る舞いはまだ変えない（両画面とも第 1 問から始まる）。`tests/unit/parse.test.ts` に question-set spec の「タイトルがない」「タイトルが空」「タイトルに銘柄を含む」の Scenario、`tests/unit/model.test.ts` と `tests/build/leak.test.ts` に公開形の最上位のキーが `PUBLIC_SET_KEYS` と完全一致することと、公開形がタイトルを保つことを書く。検証: `pnpm exec tsc --noEmit && pnpm test && pnpm e2e` が通る（既存の E2E が変更なしで通ることで、移行が振る舞いを変えていないと確かめる）
 
 ## 2. 参加者画面のタイトル画面
 

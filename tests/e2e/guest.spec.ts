@@ -5,10 +5,11 @@ import { loadQuestionSet } from "../../src/question-set/vite-plugin.ts";
 
 // package.json の e2e がこのフィクスチャでビルドした dist に対して流す
 const set = loadQuestionSet(path.resolve(import.meta.dirname, "../.."), { contentDir: "tests/fixtures/content" });
+const { questions } = set;
 const secrets = secretStrings(set);
-const last = set.length - 1;
+const last = questions.length - 1;
 const THREE_OPTIONS = 1;
-if (set[THREE_OPTIONS].options.length !== 3) throw new Error(`フィクスチャの第 ${THREE_OPTIONS + 1} 問は 3 択の前提`);
+if (questions[THREE_OPTIONS].options.length !== 3) throw new Error(`フィクスチャの第 ${THREE_OPTIONS + 1} 問は 3 択の前提`);
 
 const prevButton = (page: Page) => page.getByRole("button", { name: "前へ" });
 const nextButton = (page: Page) => page.getByRole("button", { name: "次へ" });
@@ -24,9 +25,9 @@ async function openGuest(page: Page) {
 
 /** 第 index + 1 問の問題名・説明・全選択肢・番号が表示されている */
 async function expectQuestion(page: Page, index: number) {
-  const q = set[index];
+  const q = questions[index];
   await expect(page.getByRole("heading", { level: 1 })).toContainText(q.title);
-  await expect(page.getByText(`${index + 1} / ${set.length}`)).toBeVisible();
+  await expect(page.getByText(`${index + 1} / ${questions.length}`)).toBeVisible();
   await expect(page.getByText(q.description)).toBeVisible();
   await expect(page.getByRole("img", { name: /^選択肢 / })).toHaveCount(q.options.length);
   for (const o of q.options) {

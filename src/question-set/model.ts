@@ -22,15 +22,26 @@ export interface Question {
   readonly explanation: string;
   readonly options: Options;
 }
-/** 検証済み・1 問以上・出題順。parseQuestionSet だけが作れる */
-export type QuestionSet = readonly [Question, ...Question[]] & { readonly __brand: "QuestionSet" };
+/** 検証済み。問題は 1 問以上・出題順。parseQuestionSet だけが作れる */
+export type QuestionSet = {
+  /** 会のタイトル。参加者にも見える */
+  readonly title: string;
+  readonly questions: readonly [Question, ...Question[]];
+} & { readonly __brand: "QuestionSet" };
+
+/** 司会画面の loader の値。ブランドは createServerFn の直列化の型検査を通らないので持たない */
+export type HostQuestionSet = Omit<QuestionSet, "__brand">;
 
 export type PublicOption = Pick<Option, "label" | "image">;
 export type PublicQuestion = Pick<Question, "mode" | "title" | "description"> & {
   readonly options: readonly [PublicOption, PublicOption] | readonly [PublicOption, PublicOption, PublicOption];
 };
-export type PublicQuestionSet = readonly [PublicQuestion, ...PublicQuestion[]];
+export type PublicQuestionSet = {
+  readonly title: string;
+  readonly questions: readonly [PublicQuestion, ...PublicQuestion[]];
+};
 
+export const PUBLIC_SET_KEYS = ["title", "questions"] as const;
 export const PUBLIC_QUESTION_KEYS = ["mode", "title", "description", "options"] as const;
 export const PUBLIC_OPTION_KEYS = ["label", "image"] as const;
 
@@ -53,8 +64,8 @@ function toPublicQuestion(q: Question): PublicQuestion {
 
 /** 許可リスト方式の射影。spread も omit も使わず項目ごとに新しいオブジェクトを作るので、後から足した項目は既定で非公開になる */
 export function toPublic(set: QuestionSet): PublicQuestionSet {
-  const [first, ...rest] = set;
-  return [toPublicQuestion(first), ...rest.map(toPublicQuestion)];
+  const [first, ...rest] = set.questions;
+  return { title: set.title, questions: [toPublicQuestion(first), ...rest.map(toPublicQuestion)] };
 }
 
 export type Answer =
@@ -89,5 +100,5 @@ export function secretFields<T>(q: {
 
 /** 漏洩とみなす文字列: 全選択肢の name と price、全問題の explanation（重複は除く）。rank は数値なので構造で検査する */
 export function secretStrings(set: QuestionSet): readonly string[] {
-  return [...new Set(set.flatMap((q) => secretFields(q).map((f) => f.value)))];
+  return [...new Set(set.questions.flatMap((q) => secretFields(q).map((f) => f.value)))];
 }
