@@ -14,7 +14,7 @@
 
 ## 3. 司会画面の QR コード
 
-- [ ] 3.1 `uqr` を dependencies、`jsqr`・`pngjs`・`@types/pngjs` を devDependencies に固定版で足す。検証: `pnpm install --frozen-lockfile` が通り、`node -e` で `uqr` の `encode` が行列を返す
+- [x] 3.1 `uqr` を dependencies、`jsqr`・`pngjs`・`@types/pngjs` を devDependencies に固定版で足す。検証: `pnpm install --frozen-lockfile` が通り、`node -e` で `uqr` の `encode` が行列を返す
 - [ ] 3.2 design の Decisions 4 のとおり司会画面のタイトル画面に参加者画面の URL と QR コードを足し、テーマのトークンと cqw で 16:9 に配置する。新しい文字色と背景の組があれば `TEXT_PAIRS` に足す。`host.spec.ts` に「QR コードを読み取ると参加者画面の URL になる」（要素のスクリーンショットを復号する。Decisions 6）、`content.spec.ts` に「1920×1080 の表示でタイトル画面が 1 画面に収まる」を足す。検証: `pnpm exec tsc --noEmit && pnpm test && pnpm e2e` が通る
 
 ## 4. 文書と見た目の確認
