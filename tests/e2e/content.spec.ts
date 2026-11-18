@@ -11,8 +11,9 @@ import { findSecrets } from "../leak.ts";
 // 期待値はローカルの問題ファイルから作る。BASE_URL でデプロイ先に流すときは、デプロイしたものと同じ content であること
 const root = path.resolve(import.meta.dirname, "../..");
 const set = loadQuestionSet(root);
+const { questions } = set;
 const secrets = secretStrings(set);
-const last = set.length - 1;
+const last = questions.length - 1;
 const contentDir = path.resolve(root, process.env.KAKUZUKE_CONTENT_DIR ?? "content");
 const authored = parseYaml(readFileSync(path.join(contentDir, "questions.yaml"), "utf8")) as {
   readonly questions: readonly { readonly options: readonly { readonly image: string }[] }[];
@@ -31,8 +32,8 @@ const card = (page: Page, label: Label) => page.locator(`.option-card[data-label
 
 /** 第 index + 1 問の番号・問題名と全選択肢の写真が表示され、写真が読み込み済み */
 async function expectQuestion(page: Page, index: number) {
-  const q = set[index];
-  await expect(page.getByText(`${index + 1} / ${set.length}`)).toBeVisible();
+  const q = questions[index];
+  await expect(page.getByText(`${index + 1} / ${questions.length}`)).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(q.title);
   await expect(page.getByRole("img", { name: /^選択肢 / })).toHaveCount(q.options.length);
   for (const o of q.options) {
@@ -42,9 +43,30 @@ async function expectQuestion(page: Page, index: number) {
   }
 }
 
-/** 1920×1080 で、問題名・全選択肢・メッセージ欄・操作ボタンが表示領域と 16:9 の枠に収まり、ページも解説欄もスクロールしない。収まらない要素の一覧を返す */
-async function overflows(page: Page): Promise<string[]> {
-  return page.evaluate(async () => {
+/** 画面ごとに、枠に収まるべき要素（名前と CSS セレクタ）と、少なくともいくつ測るか */
+const LAYOUTS = {
+  question: {
+    targets: [
+      ["問題名", ".host-title"],
+      ["選択肢", ".option-card"],
+      ["メッセージ欄", ".msg"],
+      ["ボタン", ".host-btns button"],
+    ],
+    min: 7,
+  },
+  title: {
+    targets: [
+      ["タイトル", ".host-cover__title"],
+      ["QR コード", ".qr"],
+      ["ボタン", ".host-btns button"],
+    ],
+    min: 5,
+  },
+} as const;
+
+/** 1920×1080 で、画面の要素（LAYOUTS）が表示領域と 16:9 の枠に収まり、ページも解説欄もスクロールしない。収まらない要素の一覧を返す */
+async function overflows(page: Page, layout: keyof typeof LAYOUTS): Promise<string[]> {
+  return page.evaluate(async ({ targets: selectors, min }) => {
     void document.body.offsetHeight;
     await document.fonts.ready;
     // 枠の幅は端数になるので 1px の誤差は許す
@@ -53,19 +75,19 @@ async function overflows(page: Page): Promise<string[]> {
     const view = { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
     const inside = (r: DOMRect, box: { left: number; top: number; right: number; bottom: number }) =>
       r.left >= box.left - EPSILON && r.top >= box.top - EPSILON && r.right <= box.right + EPSILON && r.bottom <= box.bottom + EPSILON;
-    const targets: [string, Element][] = [
-      ["問題名", document.querySelector(".host-title")!],
-      ...[...document.querySelectorAll(".option-card")].map((el): [string, Element] => [`選択肢 ${el.getAttribute("data-label")}`, el]),
-      ["メッセージ欄", document.querySelector(".msg")!],
-      ...[...document.querySelectorAll(".host-btns button")].map((el): [string, Element] => [`ボタン ${el.getAttribute("aria-label") ?? el.textContent}`, el]),
-    ];
+    const targets = selectors.flatMap(([name, selector]) =>
+      [...document.querySelectorAll(selector)].map((el): [string, Element] => [
+        `${name} ${el.getAttribute("data-label") ?? el.getAttribute("aria-label") ?? el.textContent}`,
+        el,
+      ]),
+    );
     const found: string[] = [];
     for (const [name, el] of targets) {
       const r = el.getBoundingClientRect();
       if (!inside(r, view)) found.push(`${name} が表示領域の外 ${JSON.stringify(r)}`);
       if (!inside(r, frame)) found.push(`${name} が枠の外 ${JSON.stringify(r)} 枠 ${JSON.stringify(frame)}`);
     }
-    if (targets.length < 7) found.push(`測る要素が足りない（${targets.length} 個）`);
+    if (targets.length < min) found.push(`測る要素が足りない（${targets.length} 個）`);
     const doc = document.documentElement;
     if (doc.scrollHeight > window.innerHeight) found.push(`ページが縦にスクロールする（${doc.scrollHeight} > ${window.innerHeight}）`);
     if (doc.scrollWidth > window.innerWidth) found.push(`ページが横にスクロールする（${doc.scrollWidth} > ${window.innerWidth}）`);
@@ -73,15 +95,15 @@ async function overflows(page: Page): Promise<string[]> {
     for (const el of document.querySelectorAll(".option-card")) {
       if (el.scrollHeight > el.clientHeight) found.push(`選択肢 ${el.getAttribute("data-label")} の中身がカードに収まらない（${el.scrollHeight} > ${el.clientHeight}）`);
     }
-    const msg = document.querySelector(".msg")!;
-    if (msg.scrollHeight > msg.clientHeight) found.push(`メッセージ欄の中身が切れる（${msg.scrollHeight} > ${msg.clientHeight}）`);
+    const msg = document.querySelector(".msg");
+    if (msg !== null && msg.scrollHeight > msg.clientHeight) found.push(`メッセージ欄の中身が切れる（${msg.scrollHeight} > ${msg.clientHeight}）`);
     return found;
-  });
+  }, LAYOUTS[layout]);
 }
 
 /** 第 index + 1 問の正解発表が revealView のとおり表示されている */
 async function expectRevealed(page: Page, index: number) {
-  const view = revealView(set[index]);
+  const view = revealView(questions[index]);
   await expect(page.getByText(`${view.headline}！`)).toBeVisible();
   await expect(page.locator(".msg")).toContainText(view.explanation);
   await expect(page.getByTestId("stamp")).toHaveCount(1);
@@ -108,13 +130,16 @@ test.describe("司会画面", () => {
       page.on("request", (r) => requests.push(r.url()));
 
       await page.goto("/host");
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText(set.title);
+      await expect(page.getByRole("img", { name: "参加者画面の QR コード" })).toBeVisible();
+      expect(await overflows(page, "title"), "タイトル画面").toEqual([]);
       for (let i = 0; i <= last; i++) {
-        if (i > 0) await driver.next(page);
+        await driver.next(page);
         await expectQuestion(page, i);
-        expect(await overflows(page), `第 ${i + 1} 問の正解発表前`).toEqual([]);
+        expect(await overflows(page, "question"), `第 ${i + 1} 問の正解発表前`).toEqual([]);
         await driver.reveal(page);
         await expectRevealed(page, i);
-        expect(await overflows(page), `第 ${i + 1} 問の正解発表後`).toEqual([]);
+        expect(await overflows(page, "question"), `第 ${i + 1} 問の正解発表後`).toEqual([]);
       }
       await expect(nextButton(page)).toBeDisabled();
 
@@ -142,7 +167,10 @@ test("参加者画面を最後まで進める間の応答に正解情報がな�
   });
 
   await page.goto("/");
-  await expect(nextButton(page)).toBeEnabled();
+  const startButton = page.getByRole("button", { name: "はじめる" });
+  await expect(startButton).toBeEnabled();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(set.title);
+  await startButton.click();
   await expectQuestion(page, 0);
   for (let i = 1; i <= last; i++) {
     await nextButton(page).click();
@@ -164,7 +192,7 @@ test("参加者画面を最後まで進める間の応答に正解情報がな�
   expect(leaks).toEqual([]);
 
   const imageUrls = responses.filter((r) => (r.headers()["content-type"] ?? "").startsWith("image/")).map((r) => r.url());
-  const shown = new Set(set.flatMap((q) => q.options.map((o) => new URL(o.image, page.url()).href)));
+  const shown = new Set(questions.flatMap((q) => q.options.map((o) => new URL(o.image, page.url()).href)));
   expect(imageUrls, "全問題の写真を受け取っている").toEqual(expect.arrayContaining([...shown]));
   const named = imageUrls.flatMap((url) => {
     const decoded = decodeURIComponent(url).normalize("NFC");

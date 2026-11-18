@@ -1,4 +1,5 @@
 # 誤りを 1 つずつ含む: rank の重複・写真の欠落・空の解説
+title: テストの会 格付けチェック
 questions:
   - mode: order
     title: 色

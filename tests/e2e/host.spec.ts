@@ -1,13 +1,16 @@
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+import jsQR from "jsqr";
+import { PNG } from "pngjs";
 import { STORAGE_KEY } from "../../src/host/restore.ts";
 import { answerOf, secretStrings, type Answer, type Label } from "../../src/question-set/model.ts";
 import { loadQuestionSet } from "../../src/question-set/vite-plugin.ts";
 
 // package.json の e2e がこのフィクスチャでビルドした dist に対して流す
 const set = loadQuestionSet(path.resolve(import.meta.dirname, "../.."), { contentDir: "tests/fixtures/content" });
+const { questions } = set;
 const secrets = secretStrings(set);
-const last = set.length - 1;
+const last = questions.length - 1;
 
 const prevButton = (page: Page) => page.getByRole("button", { name: "前へ" });
 const nextButton = (page: Page) => page.getByRole("button", { name: "次へ" });
@@ -15,22 +18,25 @@ const revealButton = (page: Page) => page.getByRole("button", { name: "正解発
 const fullscreenButton = (page: Page) => page.getByRole("button", { name: "全画面" });
 const card = (page: Page, label: Label) => page.locator(`.option-card[data-label="${label}"]`);
 const stamp = (page: Page) => page.getByTestId("stamp");
+const qrCode = (page: Page) => page.getByRole("img", { name: "参加者画面の QR コード" });
+/** テストが開いているサーバーの参加者画面 */
+const guestUrl = (page: Page) => new URL("/", page.url()).href;
 const celebration = (page: Page) => page.getByTestId("celebration");
 const PICK = 0;
 const ORDER = 1;
 
 /** フィクスチャの前提（第 1 問は pick、第 2 問は 3 択の order）が崩れたら全体を止める */
 function answerAt<M extends "pick" | "order">(index: number, mode: M) {
-  const answer = answerOf(set[index]);
+  const answer = answerOf(questions[index]);
   if (answer.mode !== mode) throw new Error(`フィクスチャの第 ${index + 1} 問は ${mode} の前提`);
   return answer as Extract<Answer, { mode: M }>;
 }
 
 /** 第 index + 1 問の問題名・説明・全選択肢・番号が表示されている */
 async function expectQuestion(page: Page, index: number) {
-  const q = set[index];
+  const q = questions[index];
   await expect(page.getByRole("heading", { level: 1 })).toContainText(q.title);
-  await expect(page.getByText(`${index + 1} / ${set.length}`)).toBeVisible();
+  await expect(page.getByText(`${index + 1} / ${questions.length}`)).toBeVisible();
   await expect(page.getByText(q.description)).toBeVisible();
   await expect(page.getByRole("img", { name: /^選択肢 / })).toHaveCount(q.options.length);
   for (const o of q.options) {
@@ -58,8 +64,24 @@ async function expectAsking(page: Page, index: number) {
   expect(await visibleAnswerInfo(page), "正解発表前に見えている正解情報").toEqual([]);
 }
 
-async function openHost(page: Page) {
+/** タイトル画面が表示され、問題は表示されていない */
+async function expectTitle(page: Page) {
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(set.title);
+  await expect(qrCode(page)).toBeVisible();
+  await expect(page.getByRole("img", { name: /^選択肢 / })).toHaveCount(0);
+  await expect(page.getByText(/^STAGE /)).toHaveCount(0);
+  await expect(revealButton(page)).toHaveCount(0);
+}
+
+async function openTitle(page: Page) {
   await page.goto("/host");
+  await expectTitle(page);
+}
+
+/** タイトル画面から第 1 問へ進んだところ */
+async function openHost(page: Page) {
+  await openTitle(page);
+  await nextButton(page).click();
   await expectAsking(page, 0);
 }
 
@@ -70,13 +92,28 @@ async function goTo(page: Page, index: number) {
   }
 }
 
-test.describe("問題の表示", () => {
-  test("新しいタブで開いた直後は第 1 問を表示する", async ({ browser }) => {
+test.describe("タイトル画面", () => {
+  test("新しいタブで開いた直後はタイトル画面を表示する", async ({ browser }) => {
     const context = await browser.newContext({ baseURL: test.info().project.use.baseURL });
     const page = await context.newPage();
-    await page.goto("/host");
-    await expectQuestion(page, 0);
+    await openTitle(page);
     await context.close();
+  });
+
+  test("QR コードを読み取ると参加者画面の URL になる", async ({ page }) => {
+    await openTitle(page);
+    const png = PNG.sync.read(await qrCode(page).screenshot());
+    const decoded = jsQR(new Uint8ClampedArray(png.data), png.width, png.height);
+    expect(decoded?.data).toBe(guestUrl(page));
+    expect(guestUrl(page)).toBe(new URL("/", test.info().project.use.baseURL).href);
+  });
+});
+
+test.describe("問題画面の表示", () => {
+  test("第 1 問を問題番号つきで表示する", async ({ page }) => {
+    await openTitle(page);
+    await nextButton(page).click();
+    await expectQuestion(page, 0);
   });
 
   test("正解発表前は正解情報を表示しない", async ({ page }) => {
@@ -87,11 +124,30 @@ test.describe("問題の表示", () => {
     }
     // 陽性対照: 正解発表すれば同じ検査が正解情報を見つける
     await page.keyboard.press("Enter");
-    await expect.poll(() => visibleAnswerInfo(page)).toEqual(expect.arrayContaining(["正解は", set[last].explanation]));
+    await expect.poll(() => visibleAnswerInfo(page)).toEqual(expect.arrayContaining(["正解は", questions[last].explanation]));
   });
 });
 
-test.describe("前後の問題への移動", () => {
+test.describe("前後の画面への移動", () => {
+  test("タイトル画面で次へを押すと第 1 問を表示する", async ({ page }) => {
+    await openTitle(page);
+    await nextButton(page).click();
+    await expectAsking(page, 0);
+  });
+
+  test("第 1 問で前へを押すとタイトル画面に戻る", async ({ page }) => {
+    await openHost(page);
+    await prevButton(page).click();
+    await expectTitle(page);
+  });
+
+  test("タイトル画面では前へを操作できない", async ({ page }) => {
+    await openTitle(page);
+    await expect(prevButton(page)).toBeDisabled();
+    await prevButton(page).click({ force: true });
+    await expectTitle(page);
+  });
+
   test("次へで次の問題を表示する", async ({ page }) => {
     await openHost(page);
     await nextButton(page).click();
@@ -102,13 +158,6 @@ test.describe("前後の問題への移動", () => {
     await openHost(page);
     await goTo(page, 1);
     await prevButton(page).click();
-    await expectAsking(page, 0);
-  });
-
-  test("第 1 問では前へを操作できない", async ({ page }) => {
-    await openHost(page);
-    await expect(prevButton(page)).toBeDisabled();
-    await prevButton(page).click({ force: true });
     await expectAsking(page, 0);
   });
 
@@ -123,7 +172,7 @@ test.describe("前後の問題への移動", () => {
   test("正解発表後に移動して戻ると発表前に戻る", async ({ page }) => {
     await openHost(page);
     await page.keyboard.press("Space");
-    await expect(page.getByText(set[0].explanation)).toBeVisible();
+    await expect(page.getByText(questions[0].explanation)).toBeVisible();
     await nextButton(page).click();
     await expectAsking(page, 1);
     await prevButton(page).click();
@@ -132,6 +181,14 @@ test.describe("前後の問題への移動", () => {
 });
 
 test.describe("再読み込みで同じ問題に戻る", () => {
+  test("タイトル画面で再読み込みするとタイトル画面のまま", async ({ page }) => {
+    await openHost(page);
+    await prevButton(page).click();
+    await expectTitle(page);
+    await page.reload();
+    await expectTitle(page);
+  });
+
   test("第 3 問で再読み込みすると第 3 問に戻る", async ({ page }) => {
     await openHost(page);
     await goTo(page, 2);
@@ -143,7 +200,7 @@ test.describe("再読み込みで同じ問題に戻る", () => {
     await openHost(page);
     await goTo(page, 1);
     await revealButton(page).click();
-    await expect(page.getByText(set[1].explanation)).toBeVisible();
+    await expect(page.getByText(questions[1].explanation)).toBeVisible();
     await page.reload();
     await expectAsking(page, 1);
   });
@@ -197,12 +254,43 @@ test.describe("全画面表示", () => {
     await prevButton(page).click();
     await expectAsking(page, 0);
     await revealButton(page).click();
-    await expect(page.getByText(set[0].explanation)).toBeVisible();
+    await expect(page.getByText(questions[0].explanation)).toBeVisible();
     expect(errors).toEqual([]);
   });
 });
 
 test.describe("キーボード操作", () => {
+  for (const key of ["ArrowRight", "PageDown"]) {
+    const name = key === "ArrowRight" ? "→" : key;
+    test(`${name} キーでタイトル画面から第 1 問へ進む`, async ({ page }) => {
+      await openTitle(page);
+      await page.keyboard.press(key);
+      await expectAsking(page, 0);
+    });
+  }
+
+  for (const key of ["ArrowLeft", "PageUp"]) {
+    const name = key === "ArrowLeft" ? "←" : key;
+    test(`${name} キーで第 1 問からタイトル画面へ戻る`, async ({ page }) => {
+      await openHost(page);
+      await page.keyboard.press(key);
+      await expectTitle(page);
+    });
+  }
+
+  test("タイトル画面では Space キーと Enter キーで何も起きない", async ({ page }) => {
+    await openTitle(page);
+    for (const key of ["Space", "Enter"]) {
+      await page.keyboard.press(key);
+      await expectTitle(page);
+      expect(await visibleAnswerInfo(page), `${key} を押した後に見えている正解情報`).toEqual([]);
+    }
+    // 陽性対照: 同じキーで第 1 問なら正解発表になる（キーが届いていて、タイトル画面だけが無視している）
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Enter");
+    await expect(stamp(page)).toBeVisible();
+  });
+
   for (const key of ["ArrowRight", "PageDown"]) {
     const name = key === "ArrowRight" ? "→" : key;
     test(`${name} キーで次の問題へ進む`, async ({ page }) => {
@@ -228,7 +316,7 @@ test.describe("キーボード操作", () => {
       await page.keyboard.press(key);
       // 第 1 問は B が rank 1 の pick（フィクスチャの前提）
       await expect(page.getByText("正解は B")).toBeVisible();
-      await expect(page.getByText(set[0].explanation)).toBeVisible();
+      await expect(page.getByText(questions[0].explanation)).toBeVisible();
     });
   }
 });
@@ -245,7 +333,7 @@ async function revealAt(page: Page, index: number) {
 async function expectStampOnlyOn(page: Page, index: number, winner: Label) {
   await expect(stamp(page)).toHaveCount(1);
   await expect(card(page, winner).getByTestId("stamp")).toHaveText("正解！");
-  for (const o of set[index].options.filter((o) => o.label !== winner)) {
+  for (const o of questions[index].options.filter((o) => o.label !== winner)) {
     await expect(card(page, o.label).getByTestId("stamp")).toHaveCount(0);
   }
 }
@@ -259,7 +347,7 @@ function celebrationHasDots(page: Page) {
 }
 
 test.describe("pick の正解発表", () => {
-  const q = set[PICK];
+  const q = questions[PICK];
   const { winner } = answerAt(PICK, "pick");
 
   test("pick で正解の選択肢に正解の印が付く", async ({ page }) => {
@@ -283,7 +371,7 @@ test.describe("pick の正解発表", () => {
 });
 
 test.describe("order の正解発表", () => {
-  const q = set[ORDER];
+  const q = questions[ORDER];
   const { sequence } = answerAt(ORDER, "order");
 
   test("order の正解発表で全選択肢に順位を表示する", async ({ page }) => {
@@ -341,7 +429,7 @@ test.describe("正解発表の再演出", () => {
   test("reduced motion が有効なときは演出を再生しない", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await revealAt(page, PICK);
-    const q = set[PICK];
+    const q = questions[PICK];
     await expect(page.getByText(q.explanation)).toBeVisible();
     for (const o of q.options) await expect(card(page, o.label)).toContainText(o.name);
     await expect(celebration(page)).toHaveCount(0);

@@ -30,6 +30,7 @@ const optionCount = "選択肢は 2 個か 3 個にしてください";
 
 const setSchema = z.object(
   {
+    title: text,
     questions: z
       .array(
         z.object(
@@ -52,7 +53,7 @@ const setSchema = z.object(
       )
       .min(1, "問題を 1 問以上書いてください"),
   },
-  typed("questions: から始まる形"),
+  typed("title: と questions: を持つ形"),
 );
 type ValidInput = z.output<typeof setSchema>;
 
@@ -93,6 +94,7 @@ function shapeIssue(issue: z.core.$ZodIssue): Issue {
 function* crossFieldIssues(input: unknown, images: ReadonlyMap<string, ImageUrl>): Generator<Issue> {
   const questions = items(at(input, "questions"));
   const secrets = secretsIn(questions);
+  yield* leaksIn(at(input, "title"), ["title"], secrets);
   for (const [i, q] of questions.entries()) {
     const options = items(at(q, "options"));
 
@@ -120,17 +122,17 @@ function* crossFieldIssues(input: unknown, images: ReadonlyMap<string, ImageUrl>
     }
 
     for (const field of ["title", "description"] as const) {
-      const shown = valid(text, at(q, field));
-      if (shown === undefined) continue;
-      for (const [secret, kind] of secrets) {
-        if (shown.includes(secret)) {
-          yield {
-            code: "public-text-leak",
-            path: ["questions", i, field],
-            message: `参加者に見える文に${KIND_NAMES[kind]}「${secret}」が含まれています`,
-          };
-        }
-      }
+      yield* leaksIn(at(q, field), ["questions", i, field], secrets);
+    }
+  }
+}
+
+function* leaksIn(value: unknown, path: Issue["path"], secrets: ReadonlyMap<string, SecretKind>): Generator<Issue> {
+  const shown = valid(text, value);
+  if (shown === undefined) return;
+  for (const [secret, kind] of secrets) {
+    if (shown.includes(secret)) {
+      yield { code: "public-text-leak", path, message: `参加者に見える文に${KIND_NAMES[kind]}「${secret}」が含まれています` };
     }
   }
 }
@@ -178,5 +180,5 @@ function toQuestionSet(input: ValidInput, images: ReadonlyMap<string, ImageUrl>)
       price: o.price,
     })) as unknown as Options,
   }));
-  return questions as unknown as QuestionSet;
+  return { title: input.title, questions } as unknown as QuestionSet;
 }

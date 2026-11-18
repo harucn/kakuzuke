@@ -1,4 +1,5 @@
 # E2E（tests/e2e/host.spec.ts など）が前提にするデータ。第 1 問は B が rank 1 の pick、第 2 問は A/B/C が 1/3/2 の order
+title: テストの会 格付けチェック
 questions:
   - mode: pick
     title: ワイン
