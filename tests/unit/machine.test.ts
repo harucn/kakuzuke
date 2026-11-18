@@ -23,8 +23,8 @@ describe("booting", () => {
     }
   });
 
-  it("保存なしの restore で第 1 問を発表前の状態で表示する", () => {
-    expect(run([restore(null)])).toEqual({ phase: "asking", index: 0 });
+  it("保存なしの restore でタイトル画面を表示する", () => {
+    expect(run([restore(null)])).toEqual({ phase: "title" });
   });
 
   it("restore で保存された問題に発表前の状態で戻る", () => {
@@ -37,6 +37,8 @@ describe("booting", () => {
   });
 
   it("booting 以外での restore は無視する", () => {
+    const title = run([restore(null)]);
+    expect(step(title, restore(2), TOTAL)).toBe(title);
     const asking = run([restore(1)]);
     expect(step(asking, restore(2), TOTAL)).toBe(asking);
     const revealed = step(asking, reveal, TOTAL);
@@ -44,18 +46,27 @@ describe("booting", () => {
   });
 });
 
-describe("前後の問題への移動", () => {
+describe("前後の画面への移動", () => {
+  it("タイトル画面で次へを押すと第 1 問を発表前の状態で表示する", () => {
+    expect(run([restore(null), next])).toEqual({ phase: "asking", index: 0 });
+  });
+
+  it("第 1 問で前へを押すとタイトル画面に戻る", () => {
+    expect(run([restore(0), prev])).toEqual({ phase: "title" });
+    expect(run([restore(0), reveal, prev])).toEqual({ phase: "title" });
+  });
+
+  it("タイトル画面で前へを押してもタイトル画面のままで、同じオブジェクトを返す", () => {
+    const title = run([restore(null)]);
+    expect(step(title, prev, TOTAL)).toBe(title);
+  });
+
   it("次へで次の問題を発表前の状態で表示する", () => {
-    expect(run([restore(null), next])).toEqual({ phase: "asking", index: 1 });
+    expect(run([restore(0), next])).toEqual({ phase: "asking", index: 1 });
   });
 
   it("前へで前の問題を発表前の状態で表示する", () => {
     expect(run([restore(1), prev])).toEqual({ phase: "asking", index: 0 });
-  });
-
-  it("第 1 問で前へを押しても第 1 問のままで、同じオブジェクトを返す", () => {
-    const first = run([restore(0)]);
-    expect(step(first, prev, TOTAL)).toBe(first);
   });
 
   it("最終問で次へを押しても最終問のままで、同じオブジェクトを返す", () => {
@@ -63,11 +74,9 @@ describe("前後の問題への移動", () => {
     expect(step(last, next, TOTAL)).toBe(last);
   });
 
-  it("正解発表後でも端での移動は何もせず、発表した状態のまま同じオブジェクトを返す", () => {
+  it("正解発表後でも最終問での次へは何もせず、発表した状態のまま同じオブジェクトを返す", () => {
     const lastRevealed = run([restore(TOTAL - 1), reveal]);
     expect(step(lastRevealed, next, TOTAL)).toBe(lastRevealed);
-    const firstRevealed = run([restore(0), reveal]);
-    expect(step(firstRevealed, prev, TOTAL)).toBe(firstRevealed);
   });
 
   it("正解発表後に移動して戻ると発表前に戻る", () => {
@@ -81,6 +90,11 @@ describe("前後の問題への移動", () => {
 });
 
 describe("正解発表", () => {
+  it("タイトル画面での正解発表は無視し、同じオブジェクトを返す", () => {
+    const title = run([restore(null)]);
+    expect(step(title, reveal, TOTAL)).toBe(title);
+  });
+
   it("発表前に正解発表を押すと run 1 で発表する", () => {
     expect(run([restore(1), reveal])).toEqual({ phase: "revealed", index: 1, run: 1 });
   });

@@ -1,6 +1,6 @@
 import { useState, useSyncExternalStore } from "react";
 import { preload } from "react-dom";
-import { boundsOf, move, positionText, type Step } from "../deck/cursor.ts";
+import { boundsOf, move, positionText, type Position, type Step } from "../deck/cursor.ts";
 import type { PublicQuestionSet } from "../question-set/model.ts";
 import { OptionCard } from "../ui/OptionCard.tsx";
 import { LEAK_CANARY } from "./leak-canary.ts";
@@ -17,20 +17,57 @@ function useHydrated(): boolean {
 }
 
 export function GuestScreen({ set }: { readonly set: PublicQuestionSet }) {
-  const [index, setIndex] = useState(0);
+  const [position, setPosition] = useState<Position>("title");
   const hydrated = useHydrated();
   const { questions } = set;
-  const question = questions[index];
-  const { canPrev, canNext } = boundsOf(index, questions.length);
-  for (const option of questions[index + 1]?.options ?? []) preload(option.image, { as: "image" });
+  const upcoming = position === "title" ? 0 : position + 1;
+  for (const option of questions[upcoming]?.options ?? []) preload(option.image, { as: "image" });
 
   const go = (step: Step) => {
-    setIndex(move(index, step, questions.length));
+    setPosition(move(position, step, questions.length));
     window.scrollTo(0, 0);
   };
 
   return (
     <main className="guest" aria-label="参加者画面" data-leak-canary={LEAK_CANARY}>
+      {position === "title" ? (
+        <>
+          <div className="guest-bar">
+            <span>KAKUZUKE</span>
+          </div>
+          <div className="guest-cover">
+            <h1 className="guest-cover__title">{set.title}</h1>
+            <p className="guest-cover__count">全 {questions.length} 問</p>
+          </div>
+          <nav className="guest-nav guest-nav--start" aria-label="問題の移動">
+            <button type="button" className="btn btn-go px" disabled={!hydrated} onClick={() => go(1)}>
+              はじめる<span aria-hidden="true"> ▶</span>
+            </button>
+          </nav>
+        </>
+      ) : (
+        <QuestionView set={set} index={position} hydrated={hydrated} go={go} />
+      )}
+    </main>
+  );
+}
+
+function QuestionView({
+  set,
+  index,
+  hydrated,
+  go,
+}: {
+  readonly set: PublicQuestionSet;
+  readonly index: number;
+  readonly hydrated: boolean;
+  readonly go: (step: Step) => void;
+}) {
+  const { questions } = set;
+  const question = questions[index];
+  const { canPrev, canNext } = boundsOf(index, questions.length);
+  return (
+    <>
       <div className="guest-bar">
         <span>STAGE {positionText(index, questions.length)}</span>
         <span>KAKUZUKE</span>
@@ -53,6 +90,6 @@ export function GuestScreen({ set }: { readonly set: PublicQuestionSet }) {
           次へ<span aria-hidden="true"> ▶</span>
         </button>
       </nav>
-    </main>
+    </>
   );
 }

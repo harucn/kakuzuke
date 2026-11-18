@@ -59,8 +59,24 @@ async function expectAsking(page: Page, index: number) {
   expect(await visibleAnswerInfo(page), "正解発表前に見えている正解情報").toEqual([]);
 }
 
-async function openHost(page: Page) {
+/** タイトル画面が表示され、問題は表示されていない */
+async function expectTitle(page: Page) {
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(set.title);
+  await expect(page.getByText(`全 ${questions.length} 問`)).toBeVisible();
+  await expect(page.getByRole("img", { name: /^選択肢 / })).toHaveCount(0);
+  await expect(page.getByText(/^STAGE /)).toHaveCount(0);
+  await expect(revealButton(page)).toHaveCount(0);
+}
+
+async function openTitle(page: Page) {
   await page.goto("/host");
+  await expectTitle(page);
+}
+
+/** タイトル画面から第 1 問へ進んだところ */
+async function openHost(page: Page) {
+  await openTitle(page);
+  await nextButton(page).click();
   await expectAsking(page, 0);
 }
 
@@ -71,13 +87,20 @@ async function goTo(page: Page, index: number) {
   }
 }
 
-test.describe("問題の表示", () => {
-  test("新しいタブで開いた直後は第 1 問を表示する", async ({ browser }) => {
+test.describe("タイトル画面", () => {
+  test("新しいタブで開いた直後はタイトル画面を表示する", async ({ browser }) => {
     const context = await browser.newContext({ baseURL: test.info().project.use.baseURL });
     const page = await context.newPage();
-    await page.goto("/host");
-    await expectQuestion(page, 0);
+    await openTitle(page);
     await context.close();
+  });
+});
+
+test.describe("問題画面の表示", () => {
+  test("第 1 問を問題番号つきで表示する", async ({ page }) => {
+    await openTitle(page);
+    await nextButton(page).click();
+    await expectQuestion(page, 0);
   });
 
   test("正解発表前は正解情報を表示しない", async ({ page }) => {
@@ -92,7 +115,26 @@ test.describe("問題の表示", () => {
   });
 });
 
-test.describe("前後の問題への移動", () => {
+test.describe("前後の画面への移動", () => {
+  test("タイトル画面で次へを押すと第 1 問を表示する", async ({ page }) => {
+    await openTitle(page);
+    await nextButton(page).click();
+    await expectAsking(page, 0);
+  });
+
+  test("第 1 問で前へを押すとタイトル画面に戻る", async ({ page }) => {
+    await openHost(page);
+    await prevButton(page).click();
+    await expectTitle(page);
+  });
+
+  test("タイトル画面では前へを操作できない", async ({ page }) => {
+    await openTitle(page);
+    await expect(prevButton(page)).toBeDisabled();
+    await prevButton(page).click({ force: true });
+    await expectTitle(page);
+  });
+
   test("次へで次の問題を表示する", async ({ page }) => {
     await openHost(page);
     await nextButton(page).click();
@@ -103,13 +145,6 @@ test.describe("前後の問題への移動", () => {
     await openHost(page);
     await goTo(page, 1);
     await prevButton(page).click();
-    await expectAsking(page, 0);
-  });
-
-  test("第 1 問では前へを操作できない", async ({ page }) => {
-    await openHost(page);
-    await expect(prevButton(page)).toBeDisabled();
-    await prevButton(page).click({ force: true });
     await expectAsking(page, 0);
   });
 
@@ -133,6 +168,14 @@ test.describe("前後の問題への移動", () => {
 });
 
 test.describe("再読み込みで同じ問題に戻る", () => {
+  test("タイトル画面で再読み込みするとタイトル画面のまま", async ({ page }) => {
+    await openHost(page);
+    await prevButton(page).click();
+    await expectTitle(page);
+    await page.reload();
+    await expectTitle(page);
+  });
+
   test("第 3 問で再読み込みすると第 3 問に戻る", async ({ page }) => {
     await openHost(page);
     await goTo(page, 2);
@@ -204,6 +247,37 @@ test.describe("全画面表示", () => {
 });
 
 test.describe("キーボード操作", () => {
+  for (const key of ["ArrowRight", "PageDown"]) {
+    const name = key === "ArrowRight" ? "→" : key;
+    test(`${name} キーでタイトル画面から第 1 問へ進む`, async ({ page }) => {
+      await openTitle(page);
+      await page.keyboard.press(key);
+      await expectAsking(page, 0);
+    });
+  }
+
+  for (const key of ["ArrowLeft", "PageUp"]) {
+    const name = key === "ArrowLeft" ? "←" : key;
+    test(`${name} キーで第 1 問からタイトル画面へ戻る`, async ({ page }) => {
+      await openHost(page);
+      await page.keyboard.press(key);
+      await expectTitle(page);
+    });
+  }
+
+  test("タイトル画面では Space キーと Enter キーで何も起きない", async ({ page }) => {
+    await openTitle(page);
+    for (const key of ["Space", "Enter"]) {
+      await page.keyboard.press(key);
+      await expectTitle(page);
+      expect(await visibleAnswerInfo(page), `${key} を押した後に見えている正解情報`).toEqual([]);
+    }
+    // 陽性対照: 同じキーで第 1 問なら正解発表になる（キーが届いていて、タイトル画面だけが無視している）
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Enter");
+    await expect(stamp(page)).toBeVisible();
+  });
+
   for (const key of ["ArrowRight", "PageDown"]) {
     const name = key === "ArrowRight" ? "→" : key;
     test(`${name} キーで次の問題へ進む`, async ({ page }) => {

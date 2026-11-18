@@ -1,4 +1,6 @@
+import path from "node:path";
 import { expect, test } from "@playwright/test";
+import { loadQuestionSet } from "../../src/question-set/vite-plugin.ts";
 
 for (const [path, text] of [
   ["/", `aria-label="参加者画面"`],
@@ -12,9 +14,10 @@ for (const [path, text] of [
   });
 }
 
+// 参加者画面の HTML はタイトル画面で写真を含まないので、写真の URL は問題データから取る
 test("写真はハッシュ名の URL で配信される", async ({ request }) => {
-  const html = await (await request.get("/")).text();
-  const sources = [...html.matchAll(/<img [^>]*src="([^"]+)"/g)].map((m) => m[1]);
+  const set = loadQuestionSet(path.resolve(import.meta.dirname, "../.."));
+  const sources = [...new Set(set.questions.flatMap((q) => q.options.map((o) => o.image)))];
   expect(sources.length).toBeGreaterThan(0);
   for (const src of sources) {
     expect(src).toMatch(/^\/images\/[0-9a-f]{12}\.(jpg|png)$/);

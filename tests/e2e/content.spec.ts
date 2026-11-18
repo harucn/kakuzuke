@@ -109,8 +109,9 @@ test.describe("司会画面", () => {
       page.on("request", (r) => requests.push(r.url()));
 
       await page.goto("/host");
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText(set.title);
       for (let i = 0; i <= last; i++) {
-        if (i > 0) await driver.next(page);
+        await driver.next(page);
         await expectQuestion(page, i);
         expect(await overflows(page), `第 ${i + 1} 問の正解発表前`).toEqual([]);
         await driver.reveal(page);
@@ -143,7 +144,10 @@ test("参加者画面を最後まで進める間の応答に正解情報がな�
   });
 
   await page.goto("/");
-  await expect(nextButton(page)).toBeEnabled();
+  const startButton = page.getByRole("button", { name: "はじめる" });
+  await expect(startButton).toBeEnabled();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(set.title);
+  await startButton.click();
   await expectQuestion(page, 0);
   for (let i = 1; i <= last; i++) {
     await nextButton(page).click();

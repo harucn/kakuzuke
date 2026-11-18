@@ -1,4 +1,4 @@
-import { clampIndex } from "../deck/cursor.ts";
+import { clampIndex, type Position } from "../deck/cursor.ts";
 
 export const STORAGE_KEY = "kakuzuke:host:index";
 
@@ -17,10 +17,12 @@ export function loadIndex(total: number): number | null {
   }
 }
 
-export function saveIndex(index: number): void {
+/** タイトル画面では保存を消す。新しいタブと同じ「保存なし」になり、再読み込みでタイトル画面に戻る */
+export function savePosition(position: Position): void {
   try {
-    globalThis.sessionStorage.setItem(STORAGE_KEY, String(index));
+    if (position === "title") globalThis.sessionStorage.removeItem(STORAGE_KEY);
+    else globalThis.sessionStorage.setItem(STORAGE_KEY, String(position));
   } catch {
-    // 保存できなくても進行は続ける。再読み込みで第 1 問に戻るだけ
+    // 保存できなくても進行は続ける。再読み込みでタイトル画面に戻るだけ
   }
 }

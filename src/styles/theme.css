@@ -286,6 +286,34 @@ body {
 .host-btns .btn-sq {
   padding: 0.8cqw 1cqw;
 }
+/* 司会画面のタイトル画面: 上の帯・中身・下の操作ボタンの 3 段 */
+.host--title {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+.host-cover {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4cqw;
+  align-items: center;
+  min-height: 0;
+}
+.host-cover__title {
+  margin: 0;
+  font-size: 6cqw;
+  font-weight: 400;
+  line-height: 1.25;
+  color: var(--green-deep);
+  text-wrap: balance;
+}
+.host-cover__count {
+  margin: 2cqw 0 0;
+  font-size: 3cqw;
+  color: var(--red);
+}
+.host-foot--title {
+  grid-template-columns: auto;
+  justify-content: end;
+}
 /* 全画面の対象はページ全体（HostScreen）。既定の黒い backdrop が枠の周りに見えないよう地の色を塗る */
 .host-stage:fullscreen {
   background: var(--cream);
@@ -349,4 +377,26 @@ body {
   min-height: 48px;
   font-size: 16px;
   padding: 8px 0;
+}
+/* 参加者画面のタイトル画面。ボタンは問題画面と同じ位置（下に留める）に 1 つだけ置く */
+.guest-cover {
+  min-height: 50dvh;
+  display: grid;
+  align-content: center;
+  gap: 12px;
+}
+.guest-cover__title {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 400;
+  line-height: 1.3;
+  color: var(--green-deep);
+}
+.guest-cover__count {
+  margin: 0;
+  font-size: 18px;
+  color: var(--red);
+}
+.guest-nav--start {
+  grid-template-columns: 1fr;
 }
