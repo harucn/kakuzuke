@@ -67,8 +67,6 @@ async function expectAsking(page: Page, index: number) {
 /** タイトル画面が表示され、問題は表示されていない */
 async function expectTitle(page: Page) {
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(set.title);
-  await expect(page.getByText(`全 ${questions.length} 問`)).toBeVisible();
-  await expect(page.getByText(guestUrl(page), { exact: true })).toBeVisible();
   await expect(qrCode(page)).toBeVisible();
   await expect(page.getByRole("img", { name: /^選択肢 / })).toHaveCount(0);
   await expect(page.getByText(/^STAGE /)).toHaveCount(0);

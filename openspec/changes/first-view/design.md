@@ -97,7 +97,7 @@ export type HostState =
 
 参加者画面の URL は `window.location.origin + "/"` からクライアントで作り、QR コードもクライアントで生成する。事前レンダリングの HTML は origin を知らず、本番とプレビューで origin が違うため。司会画面は `booting` の間は何も描画しないので、生成をタイトル画面の描画の中で行っても hydration の食い違いは起きない。
 
-ライブラリは `uqr`（依存なし、MIT、0.1.3 は 2026-04-03 公開）。`encode` が返すモジュールの行列から、司会画面が自分で 1 本の `<path>` の SVG を組み立てる。ライブラリの SVG 文字列（色が直書き）を `dangerouslySetInnerHTML` で入れずに済み、色をテーマのトークン（暗いモジュールは `--ink`、地は `--paper`）で塗れる。周囲に 4 モジュール分の余白（quiet zone）を SVG の中に取り、`shape-rendering: crispEdges` でモジュールの境目をぼかさない。大きさは 16:9 の枠の cqw で決め、URL の文字も QR の下に出す。
+ライブラリは `uqr`（依存なし、MIT、0.1.3 は 2026-04-03 公開）。`encode` が返すモジュールの行列から、司会画面が自分で 1 本の `<path>` の SVG を組み立てる。ライブラリの SVG 文字列（色が直書き）を `dangerouslySetInnerHTML` で入れずに済み、色をテーマのトークン（暗いモジュールは `--ink`、地は `--paper`）で塗れる。周囲に 4 モジュール分の余白（quiet zone）を SVG の中に取り、`shape-rendering: crispEdges` でモジュールの境目をぼかさない。大きさは 16:9 の枠の cqw で決める。URL の文字は出さない（ユーザーの判断。読み取りは QR に任せる）。
 
 却下した案:
 
@@ -106,7 +106,7 @@ export type HostState =
 
 ### 5. 参加者画面
 
-`useState<Position>("title")` から始める。タイトル画面はタイトル・「全 N 問」・「はじめる」だけを出す。「はじめる」は既存の前へ・次へと同じく hydration が終わるまで無効にする。タイトル画面でも第 1 問の写真を先読みする。
+`useState<Position>("title")` から始める。タイトル画面はタイトルと「はじめる」だけを出す。「はじめる」は既存の前へ・次へと同じく hydration が終わるまで無効にする。タイトル画面でも第 1 問の写真を先読みする。
 
 ### 6. E2E での QR の確かめ方
 

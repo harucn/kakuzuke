@@ -62,12 +62,8 @@ function TitleStage({
       <div className="host-cover">
         <div className="host-cover__text">
           <h1 className="host-cover__title">{set.title}</h1>
-          <p className="host-cover__count">全 {set.questions.length} 問</p>
         </div>
-        <figure className="host-qr">
-          <QrCode value={guestUrl} label="参加者画面の QR コード" />
-          <figcaption className="host-qr__url">{guestUrl}</figcaption>
-        </figure>
+        <QrCode value={guestUrl} label="参加者画面の QR コード" />
       </div>
       <div className="host-foot host-foot--title">
         <Controls position="title" total={set.questions.length} dispatch={dispatch} onFullscreen={onFullscreen} />

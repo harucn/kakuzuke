@@ -37,7 +37,6 @@ export function GuestScreen({ set }: { readonly set: PublicQuestionSet }) {
           </div>
           <div className="guest-cover">
             <h1 className="guest-cover__title">{set.title}</h1>
-            <p className="guest-cover__count">全 {questions.length} 問</p>
           </div>
           <nav className="guest-nav guest-nav--start" aria-label="問題の移動">
             <button type="button" className="btn btn-go px" disabled={!hydrated} onClick={() => go(1)}>

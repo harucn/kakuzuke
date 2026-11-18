@@ -57,12 +57,10 @@ const LAYOUTS = {
   title: {
     targets: [
       ["タイトル", ".host-cover__title"],
-      ["問題数", ".host-cover__count"],
       ["QR コード", ".qr"],
-      ["URL", ".host-qr__url"],
       ["ボタン", ".host-btns button"],
     ],
-    min: 7,
+    min: 5,
   },
 } as const;
 

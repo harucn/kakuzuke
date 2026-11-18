@@ -307,17 +307,6 @@ body {
   word-break: keep-all;
   overflow-wrap: anywhere;
 }
-.host-cover__count {
-  margin: 2cqw 0 0;
-  font-size: 3cqw;
-  color: var(--red);
-}
-.host-qr {
-  margin: 0;
-  display: grid;
-  gap: 1.2cqw;
-  justify-items: center;
-}
 /* 投影越しに読めるよう大きく、暗いモジュールと明るい地の組で描く */
 .qr {
   display: block;
@@ -325,14 +314,6 @@ body {
   height: 28cqw;
   background: var(--paper);
   fill: var(--ink);
-}
-.host-qr__url {
-  max-width: 28cqw;
-  font-size: 1.8cqw;
-  line-height: 1.3;
-  color: var(--ink);
-  text-align: center;
-  overflow-wrap: anywhere;
 }
 .host-foot--title {
   grid-template-columns: auto;
@@ -416,11 +397,6 @@ body {
   font-weight: 400;
   line-height: 1.3;
   color: var(--green-deep);
-}
-.guest-cover__count {
-  margin: 0;
-  font-size: 18px;
-  color: var(--red);
 }
 .guest-nav--start {
   grid-template-columns: 1fr;

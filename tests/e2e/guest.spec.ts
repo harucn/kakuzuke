@@ -20,7 +20,6 @@ const labelBar = (page: Page, label: string) => page.locator(`.option-card[data-
 /** タイトル画面が表示され、問題は表示されていない */
 async function expectTitle(page: Page) {
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(set.title);
-  await expect(page.getByText(`全 ${questions.length} 問`)).toBeVisible();
   await expect(startButton(page)).toBeVisible();
   await expect(page.getByRole("img", { name: /^選択肢 / })).toHaveCount(0);
   await expect(page.getByText(/^STAGE /)).toHaveCount(0);
