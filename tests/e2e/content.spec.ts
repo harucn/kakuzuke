@@ -43,9 +43,32 @@ async function expectQuestion(page: Page, index: number) {
   }
 }
 
-/** 1920×1080 で、問題名・全選択肢・メッセージ欄・操作ボタンが表示領域と 16:9 の枠に収まり、ページも解説欄もスクロールしない。収まらない要素の一覧を返す */
-async function overflows(page: Page): Promise<string[]> {
-  return page.evaluate(async () => {
+/** 画面ごとに、枠に収まるべき要素（名前と CSS セレクタ）と、少なくともいくつ測るか */
+const LAYOUTS = {
+  question: {
+    targets: [
+      ["問題名", ".host-title"],
+      ["選択肢", ".option-card"],
+      ["メッセージ欄", ".msg"],
+      ["ボタン", ".host-btns button"],
+    ],
+    min: 7,
+  },
+  title: {
+    targets: [
+      ["タイトル", ".host-cover__title"],
+      ["問題数", ".host-cover__count"],
+      ["QR コード", ".qr"],
+      ["URL", ".host-qr__url"],
+      ["ボタン", ".host-btns button"],
+    ],
+    min: 7,
+  },
+} as const;
+
+/** 1920×1080 で、画面の要素（LAYOUTS）が表示領域と 16:9 の枠に収まり、ページも解説欄もスクロールしない。収まらない要素の一覧を返す */
+async function overflows(page: Page, layout: keyof typeof LAYOUTS): Promise<string[]> {
+  return page.evaluate(async ({ targets: selectors, min }) => {
     void document.body.offsetHeight;
     await document.fonts.ready;
     // 枠の幅は端数になるので 1px の誤差は許す
@@ -54,19 +77,19 @@ async function overflows(page: Page): Promise<string[]> {
     const view = { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
     const inside = (r: DOMRect, box: { left: number; top: number; right: number; bottom: number }) =>
       r.left >= box.left - EPSILON && r.top >= box.top - EPSILON && r.right <= box.right + EPSILON && r.bottom <= box.bottom + EPSILON;
-    const targets: [string, Element][] = [
-      ["問題名", document.querySelector(".host-title")!],
-      ...[...document.querySelectorAll(".option-card")].map((el): [string, Element] => [`選択肢 ${el.getAttribute("data-label")}`, el]),
-      ["メッセージ欄", document.querySelector(".msg")!],
-      ...[...document.querySelectorAll(".host-btns button")].map((el): [string, Element] => [`ボタン ${el.getAttribute("aria-label") ?? el.textContent}`, el]),
-    ];
+    const targets = selectors.flatMap(([name, selector]) =>
+      [...document.querySelectorAll(selector)].map((el): [string, Element] => [
+        `${name} ${el.getAttribute("data-label") ?? el.getAttribute("aria-label") ?? el.textContent}`,
+        el,
+      ]),
+    );
     const found: string[] = [];
     for (const [name, el] of targets) {
       const r = el.getBoundingClientRect();
       if (!inside(r, view)) found.push(`${name} が表示領域の外 ${JSON.stringify(r)}`);
       if (!inside(r, frame)) found.push(`${name} が枠の外 ${JSON.stringify(r)} 枠 ${JSON.stringify(frame)}`);
     }
-    if (targets.length < 7) found.push(`測る要素が足りない（${targets.length} 個）`);
+    if (targets.length < min) found.push(`測る要素が足りない（${targets.length} 個）`);
     const doc = document.documentElement;
     if (doc.scrollHeight > window.innerHeight) found.push(`ページが縦にスクロールする（${doc.scrollHeight} > ${window.innerHeight}）`);
     if (doc.scrollWidth > window.innerWidth) found.push(`ページが横にスクロールする（${doc.scrollWidth} > ${window.innerWidth}）`);
@@ -74,10 +97,10 @@ async function overflows(page: Page): Promise<string[]> {
     for (const el of document.querySelectorAll(".option-card")) {
       if (el.scrollHeight > el.clientHeight) found.push(`選択肢 ${el.getAttribute("data-label")} の中身がカードに収まらない（${el.scrollHeight} > ${el.clientHeight}）`);
     }
-    const msg = document.querySelector(".msg")!;
-    if (msg.scrollHeight > msg.clientHeight) found.push(`メッセージ欄の中身が切れる（${msg.scrollHeight} > ${msg.clientHeight}）`);
+    const msg = document.querySelector(".msg");
+    if (msg !== null && msg.scrollHeight > msg.clientHeight) found.push(`メッセージ欄の中身が切れる（${msg.scrollHeight} > ${msg.clientHeight}）`);
     return found;
-  });
+  }, LAYOUTS[layout]);
 }
 
 /** 第 index + 1 問の正解発表が revealView のとおり表示されている */
@@ -110,13 +133,15 @@ test.describe("司会画面", () => {
 
       await page.goto("/host");
       await expect(page.getByRole("heading", { level: 1 })).toHaveText(set.title);
+      await expect(page.getByRole("img", { name: "参加者画面の QR コード" })).toBeVisible();
+      expect(await overflows(page, "title"), "タイトル画面").toEqual([]);
       for (let i = 0; i <= last; i++) {
         await driver.next(page);
         await expectQuestion(page, i);
-        expect(await overflows(page), `第 ${i + 1} 問の正解発表前`).toEqual([]);
+        expect(await overflows(page, "question"), `第 ${i + 1} 問の正解発表前`).toEqual([]);
         await driver.reveal(page);
         await expectRevealed(page, i);
-        expect(await overflows(page), `第 ${i + 1} 問の正解発表後`).toEqual([]);
+        expect(await overflows(page, "question"), `第 ${i + 1} 問の正解発表後`).toEqual([]);
       }
       await expect(nextButton(page)).toBeDisabled();
 

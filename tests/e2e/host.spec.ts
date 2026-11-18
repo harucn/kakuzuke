@@ -1,5 +1,7 @@
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+import jsQR from "jsqr";
+import { PNG } from "pngjs";
 import { STORAGE_KEY } from "../../src/host/restore.ts";
 import { answerOf, secretStrings, type Answer, type Label } from "../../src/question-set/model.ts";
 import { loadQuestionSet } from "../../src/question-set/vite-plugin.ts";
@@ -16,6 +18,9 @@ const revealButton = (page: Page) => page.getByRole("button", { name: "正解発
 const fullscreenButton = (page: Page) => page.getByRole("button", { name: "全画面" });
 const card = (page: Page, label: Label) => page.locator(`.option-card[data-label="${label}"]`);
 const stamp = (page: Page) => page.getByTestId("stamp");
+const qrCode = (page: Page) => page.getByRole("img", { name: "参加者画面の QR コード" });
+/** テストが開いているサーバーの参加者画面 */
+const guestUrl = (page: Page) => new URL("/", page.url()).href;
 const celebration = (page: Page) => page.getByTestId("celebration");
 const PICK = 0;
 const ORDER = 1;
@@ -63,6 +68,8 @@ async function expectAsking(page: Page, index: number) {
 async function expectTitle(page: Page) {
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(set.title);
   await expect(page.getByText(`全 ${questions.length} 問`)).toBeVisible();
+  await expect(page.getByText(guestUrl(page), { exact: true })).toBeVisible();
+  await expect(qrCode(page)).toBeVisible();
   await expect(page.getByRole("img", { name: /^選択肢 / })).toHaveCount(0);
   await expect(page.getByText(/^STAGE /)).toHaveCount(0);
   await expect(revealButton(page)).toHaveCount(0);
@@ -93,6 +100,14 @@ test.describe("タイトル画面", () => {
     const page = await context.newPage();
     await openTitle(page);
     await context.close();
+  });
+
+  test("QR コードを読み取ると参加者画面の URL になる", async ({ page }) => {
+    await openTitle(page);
+    const png = PNG.sync.read(await qrCode(page).screenshot());
+    const decoded = jsQR(new Uint8ClampedArray(png.data), png.width, png.height);
+    expect(decoded?.data).toBe(guestUrl(page));
+    expect(guestUrl(page)).toBe(new URL("/", test.info().project.use.baseURL).href);
   });
 });
 

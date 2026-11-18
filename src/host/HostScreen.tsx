@@ -7,6 +7,7 @@ import { Celebration } from "./Celebration.tsx";
 import { toggleFullscreen, useIsFullscreen } from "./fullscreen.ts";
 import { installHostKeys } from "./keymap.ts";
 import { initialHostState, positionOf, step, type HostEvent, type HostState, type ShownState } from "./machine.ts";
+import { QrCode } from "./QrCode.tsx";
 import { loadIndex, savePosition } from "./restore.ts";
 import { revealView, type RevealedOption } from "./reveal.ts";
 
@@ -48,6 +49,8 @@ function TitleStage({
   readonly dispatch: Dispatch<HostEvent>;
   readonly onFullscreen: () => void;
 }) {
+  // booting の間は描画しないので、ここは必ずクライアントで動く。origin は本番とプレビューで違うのでビルド時には決められない
+  const guestUrl = new URL("/", window.location.origin).href;
   return (
     <>
       <div className="host-bar">
@@ -61,6 +64,10 @@ function TitleStage({
           <h1 className="host-cover__title">{set.title}</h1>
           <p className="host-cover__count">全 {set.questions.length} 問</p>
         </div>
+        <figure className="host-qr">
+          <QrCode value={guestUrl} label="参加者画面の QR コード" />
+          <figcaption className="host-qr__url">{guestUrl}</figcaption>
+        </figure>
       </div>
       <div className="host-foot host-foot--title">
         <Controls position="title" total={set.questions.length} dispatch={dispatch} onFullscreen={onFullscreen} />
