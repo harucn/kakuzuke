@@ -45,10 +45,12 @@ const LAYOUTS = {
     targets: [
       ["問題名", ".host-title"],
       ["選択肢", ".option-card"],
+      ["写真", ".option-card__photo"],
+      ["選択肢の説明", ".option-note"],
       ["メッセージ欄", ".msg"],
       ["ボタン", ".host-btns button"],
     ],
-    min: 7,
+    min: 12,
   },
   title: {
     targets: [
@@ -97,6 +99,17 @@ async function overflows(page: Page, layout: keyof typeof LAYOUTS): Promise<stri
   }, LAYOUTS[layout]);
 }
 
+/** 写真の高さがカードの高さの半分に満たない選択肢の一覧。写真の行は minmax(0, 1fr) なので、選択肢の説明が長いと枠に収まったまま写真だけが縮む */
+function smallPhotos(page: Page): Promise<string[]> {
+  return page.locator(".option-card").evaluateAll((cards) =>
+    cards.flatMap((card, i) => {
+      const photo = card.querySelector(".option-card__photo")!.getBoundingClientRect().height;
+      const whole = card.getBoundingClientRect().height;
+      return photo * 2 >= whole ? [] : [`選択肢 ${i + 1} の写真の高さ ${photo} がカードの高さ ${whole} の半分未満`];
+    }),
+  );
+}
+
 /** 第 index + 1 問の正解発表が revealView のとおり表示されている */
 async function expectRevealed(page: Page, index: number) {
   const view = revealView(questions[index]);
@@ -135,6 +148,7 @@ test.describe("司会画面", () => {
         await driver.next(page);
         await expectQuestion(page, i);
         expect(await overflows(page, "question"), `第 ${i + 1} 問の正解発表前`).toEqual([]);
+        expect(await smallPhotos(page), `第 ${i + 1} 問の正解発表前`).toEqual([]);
         await expectNoLabels(page);
         const asking = await photoBoxes(page);
         await driver.reveal(page);
