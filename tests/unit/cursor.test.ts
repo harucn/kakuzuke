@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boundsOf, clampIndex, move, positionText, type Position } from "../../src/deck/cursor.ts";
+import { boundsOf, clampIndex, move, type Position } from "../../src/deck/cursor.ts";
 
 const positions: readonly Position[] = ["title", 0, 1, 2];
 
@@ -43,17 +43,6 @@ describe("boundsOf", () => {
       expect(move(p, -1, 3) !== p).toBe(canPrev);
       expect(move(p, 1, 3) !== p).toBe(canNext);
     }
-  });
-});
-
-describe("positionText", () => {
-  it("is 1-based", () => {
-    expect(positionText(0, 3)).toBe("1 / 3");
-    expect(positionText(2, 3)).toBe("3 / 3");
-  });
-
-  it("clamps an out-of-range index", () => {
-    expect(positionText(7, 3)).toBe("3 / 3");
   });
 });
 

@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef, type Dispatch } from "react";
 import { preload } from "react-dom";
-import { boundsOf, positionText, type Position } from "../deck/cursor.ts";
+import { boundsOf, type Position } from "../deck/cursor.ts";
 import type { HostQuestionSet } from "../question-set/model.ts";
 import { OptionCard } from "../ui/OptionCard.tsx";
 import { Celebration } from "./Celebration.tsx";
@@ -29,7 +29,7 @@ export function HostScreen({ set }: { readonly set: HostQuestionSet }) {
 
   return (
     <main ref={stage} className="host-stage" aria-label="司会画面">
-      <div className={`host px${state.phase === "title" ? " host--title" : ""}`}>
+      <div className={`host${state.phase === "title" ? " host--title" : ""}`}>
         {state.phase === "title" ? (
           <TitleStage set={set} dispatch={dispatch} onFullscreen={onFullscreen} />
         ) : (
@@ -53,12 +53,6 @@ function TitleStage({
   const guestUrl = new URL("/", window.location.origin).href;
   return (
     <>
-      <div className="host-bar">
-        <span>KAKUZUKE</span>
-        <span className="hearts" aria-hidden="true">
-          ♥ ♥ ♥
-        </span>
-      </div>
       <div className="host-cover">
         <div className="host-cover__text">
           <h1 className="host-cover__title">{set.title}</h1>
@@ -95,12 +89,6 @@ function Stage({
 
   return (
     <>
-      <div className="host-bar">
-        <span>STAGE {positionText(index, questions.length)}</span>
-        <span className="hearts" aria-hidden="true">
-          ♥ ♥ ♥
-        </span>
-      </div>
       <h1 className="host-title">
         <small>STAGE {index + 1}</small>
         {question.title}

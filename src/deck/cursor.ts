@@ -22,7 +22,3 @@ export function boundsOf(
   if (position === "title") return { canPrev: false, canNext: true };
   return { canPrev: true, canNext: clampIndex(position, total) < total - 1 };
 }
-
-export function positionText(index: number, total: number): string {
-  return `${clampIndex(index, total) + 1} / ${total}`;
-}

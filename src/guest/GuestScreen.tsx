@@ -1,6 +1,6 @@
 import { useState, useSyncExternalStore } from "react";
 import { preload } from "react-dom";
-import { boundsOf, move, positionText, type Position, type Step } from "../deck/cursor.ts";
+import { boundsOf, move, type Position, type Step } from "../deck/cursor.ts";
 import type { PublicQuestionSet } from "../question-set/model.ts";
 import { OptionCard } from "../ui/OptionCard.tsx";
 import { LEAK_CANARY } from "./leak-canary.ts";
@@ -32,9 +32,6 @@ export function GuestScreen({ set }: { readonly set: PublicQuestionSet }) {
     <main className="guest" aria-label="参加者画面" data-leak-canary={LEAK_CANARY}>
       {position === "title" ? (
         <>
-          <div className="guest-bar">
-            <span>KAKUZUKE</span>
-          </div>
           <div className="guest-cover">
             <h1 className="guest-cover__title">{set.title}</h1>
           </div>
@@ -67,10 +64,6 @@ function QuestionView({
   const { canPrev, canNext } = boundsOf(index, questions.length);
   return (
     <>
-      <div className="guest-bar">
-        <span>STAGE {positionText(index, questions.length)}</span>
-        <span>KAKUZUKE</span>
-      </div>
       <h1 className="guest-title">
         <small>STAGE {index + 1}</small>
         {question.title}
