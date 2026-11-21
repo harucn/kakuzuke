@@ -30,11 +30,11 @@ export interface TextPair {
 /** UI が文字を載せる配色の組のすべて。theme.test.ts がそれぞれのコントラスト比 4.5:1 以上を確かめる */
 export const TEXT_PAIRS: readonly TextPair[] = [
   { text: "ink", bg: "cream", use: "本文（参加者画面）" },
-  { text: "ink", bg: "paper", use: "本文・正解発表の銘柄と価格（司会画面）" },
+  { text: "ink", bg: "paper", use: "本文（司会画面）" },
   { text: "green-deep", bg: "cream", use: "問題名・タイトル（参加者画面）" },
   { text: "green-deep", bg: "paper", use: "問題名・タイトル（司会画面）・枠付きボタン" },
   { text: "red", bg: "cream", use: "STAGE 見出し（参加者画面）" },
-  { text: "red", bg: "paper", use: "STAGE 見出し（司会画面）・正解！の印・順位" },
+  { text: "red", bg: "paper", use: "STAGE 見出し（司会画面）" },
   { text: "ink", bg: "paper", use: "選択肢の説明（両画面のカード）" },
   { text: "paper", bg: "green", use: "A/B/C のラベル" },
   { text: "paper", bg: "red", use: "正解のラベル・正解発表ボタン" },

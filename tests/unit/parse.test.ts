@@ -12,19 +12,19 @@ const images = new Map([
   ["国産牛.jpg", imageUrl("/images/eee.jpg")],
 ]);
 
-const table = { label: "A", image: "テーブルワイン.jpg", note: "チリ産の赤ワイン", rank: 2, name: "テーブルワイン", price: "1本 1,000円" };
-const bordeaux = { label: "B", image: "ボルドー.jpg", note: "フランス産の赤ワイン", rank: 1, name: "シャトー・マルゴー", price: "1本 5万円" };
+const table = { label: "A", image: "テーブルワイン.jpg", note: "チリ産の赤ワイン", rank: 2 };
+const bordeaux = { label: "B", image: "ボルドー.jpg", note: "フランス産の赤ワイン", rank: 1 };
 const wine = {
   mode: "pick",
   title: "ワイン",
   description: "高いワインはどちら？",
-  explanation: "B は 1本 5万円のシャトー・マルゴー。A はスーパーで買えるテーブルワインでした。",
+  explanation: "B は 1本 5万円のシャトー・マルゴー。A はスーパーで買える赤ワインでした。",
   options: [table, bordeaux],
 };
 
-const a5 = { label: "A", image: "A5.jpg", note: "霜降りの牛肉", rank: 1, name: "A5 和牛", price: "100g 5,000円" };
-const imported = { label: "B", image: "輸入牛.jpg", note: "赤身の牛肉", rank: 3, name: "輸入牛", price: "100g 300円" };
-const domestic = { label: "C", image: "国産牛.jpg", note: "脂の多い牛肉", rank: 2, name: "国産牛", price: "100g 1,000円" };
+const a5 = { label: "A", image: "A5.jpg", note: "霜降りの牛肉", rank: 1 };
+const imported = { label: "B", image: "輸入牛.jpg", note: "赤身の牛肉", rank: 3 };
+const domestic = { label: "C", image: "国産牛.jpg", note: "脂の多い牛肉", rank: 2 };
 const beef = {
   mode: "order",
   title: "牛肉",
@@ -53,10 +53,10 @@ describe("問題セットのデータ形式", () => {
             mode: "pick",
             title: "ワイン",
             description: "高いワインはどちら？",
-            explanation: "B は 1本 5万円のシャトー・マルゴー。A はスーパーで買えるテーブルワインでした。",
+            explanation: "B は 1本 5万円のシャトー・マルゴー。A はスーパーで買える赤ワインでした。",
             options: [
-              { label: "A", image: "/images/aaa.jpg", note: "チリ産の赤ワイン", rank: 2, name: "テーブルワイン", price: "1本 1,000円" },
-              { label: "B", image: "/images/bbb.jpg", note: "フランス産の赤ワイン", rank: 1, name: "シャトー・マルゴー", price: "1本 5万円" },
+              { label: "A", image: "/images/aaa.jpg", note: "チリ産の赤ワイン", rank: 2 },
+              { label: "B", image: "/images/bbb.jpg", note: "フランス産の赤ワイン", rank: 1 },
             ],
           },
           {
@@ -65,9 +65,9 @@ describe("問題セットのデータ形式", () => {
             description: "高い順に並べよ",
             explanation: "A が A5 ランク。",
             options: [
-              { label: "A", image: "/images/ccc.jpg", note: "霜降りの牛肉", rank: 1, name: "A5 和牛", price: "100g 5,000円" },
-              { label: "B", image: "/images/ddd.jpg", note: "赤身の牛肉", rank: 3, name: "輸入牛", price: "100g 300円" },
-              { label: "C", image: "/images/eee.jpg", note: "脂の多い牛肉", rank: 2, name: "国産牛", price: "100g 1,000円" },
+              { label: "A", image: "/images/ccc.jpg", note: "霜降りの牛肉", rank: 1 },
+              { label: "B", image: "/images/ddd.jpg", note: "赤身の牛肉", rank: 3 },
+              { label: "C", image: "/images/eee.jpg", note: "脂の多い牛肉", rank: 2 },
             ],
           },
         ],
@@ -110,9 +110,7 @@ describe("問題セットのデータ形式", () => {
   it.each([
     ["image", ""],
     ["image", "  "],
-    ["name", ""],
-    ["price", "　 "],
-  ])("写真・銘柄・価格が空の選択肢は検証に失敗する（%s: %j）", (field, value) => {
+  ])("写真が空の選択肢は検証に失敗する（%s: %j）", (field, value) => {
     const result = parseQuestionSet({ title, questions: [{ ...wine, options: [table, { ...bordeaux, [field]: value }] }] }, images);
     expect(codesAndPaths(result)).toStrictEqual([["shape", ["questions", 0, "options", 1, field]]]);
   });
@@ -198,10 +196,10 @@ describe("選択肢の数と作者が付けるラベル", () => {
   it("ラベルは書いた値になり表示順は書いた順になる", () => {
     const result = parseQuestionSet({ title, questions: [{ ...beef, options: [imported, domestic, a5] }] }, images);
     if (!result.ok) throw new Error(formatIssues(result.issues));
-    expect(result.set.questions[0].options.map((o) => [o.label, o.name])).toStrictEqual([
-      ["B", "輸入牛"],
-      ["C", "国産牛"],
-      ["A", "A5 和牛"],
+    expect(result.set.questions[0].options.map((o) => [o.label, o.note])).toStrictEqual([
+      ["B", "赤身の牛肉"],
+      ["C", "脂の多い牛肉"],
+      ["A", "霜降りの牛肉"],
     ]);
   });
 });
@@ -242,44 +240,49 @@ describe("写真の指定と公開名", () => {
 });
 
 describe("問題名と説明に正解情報を含めない", () => {
-  it("説明に価格を含む問題は検証に失敗する", () => {
-    const result = parseQuestionSet({ title, questions: [{ ...wine, description: "1本 5万円のワインと…" }] }, images);
+  it("説明に解説を含む問題は検証に失敗する", () => {
+    const result = parseQuestionSet({ title, questions: [{ ...wine, description: "ヒント: B は 1本 5万円のシャトー・マルゴー。A はスーパーで買える赤ワインでした。" }] }, images);
     expect(issuesOf(result)).toStrictEqual([
       {
         code: "public-text-leak",
         path: ["questions", 0, "description"],
-        message: "参加者に見える文に価格「1本 5万円」が含まれています",
+        message: "参加者に見える文に解説「B は 1本 5万円のシャトー・マルゴー。A はスーパーで買える赤ワインでした。」が含まれています",
       },
     ]);
   });
 
-  it("問題名に銘柄を含む問題は検証に失敗する", () => {
-    const result = parseQuestionSet({ title, questions: [wine, { ...beef, title: "シャトー・マルゴーに合う牛肉" }] }, images);
+  it("問題名に別の問題の解説を含む問題は検証に失敗する", () => {
+    const result = parseQuestionSet({ title, questions: [wine, { ...beef, title: "B は 1本 5万円のシャトー・マルゴー。A はスーパーで買える赤ワインでした。" }] }, images);
     expect(issuesOf(result)).toStrictEqual([
       {
         code: "public-text-leak",
         path: ["questions", 1, "title"],
-        message: "参加者に見える文に銘柄「シャトー・マルゴー」が含まれています",
+        message: "参加者に見える文に解説「B は 1本 5万円のシャトー・マルゴー。A はスーパーで買える赤ワインでした。」が含まれています",
       },
     ]);
   });
 
-  it("タイトルに銘柄を含む問題セットは検証に失敗する", () => {
-    const result = parseQuestionSet({ title: "シャトー・マルゴーで乾杯の会", questions: [wine] }, images);
+  it("タイトルに解説を含む問題セットは検証に失敗する", () => {
+    const result = parseQuestionSet({ title: "B は 1本 5万円のシャトー・マルゴー。A はスーパーで買える赤ワインでした。", questions: [wine] }, images);
     expect(issuesOf(result)).toStrictEqual([
-      { code: "public-text-leak", path: ["title"], message: "参加者に見える文に銘柄「シャトー・マルゴー」が含まれています" },
+      { code: "public-text-leak", path: ["title"], message: "参加者に見える文に解説「B は 1本 5万円のシャトー・マルゴー。A はスーパーで買える赤ワインでした。」が含まれています" },
     ]);
   });
 
-  it("選択肢の説明に銘柄を含む問題は検証に失敗する", () => {
-    const options = [{ ...table, note: "シャトー・マルゴーに似た赤ワイン" }, bordeaux];
+  it("選択肢の説明に解説を含む問題は検証に失敗する", () => {
+    const options = [{ ...table, note: "B は 1本 5万円のシャトー・マルゴー。A はスーパーで買える赤ワインでした。" }, bordeaux];
     expect(issuesOf(parseQuestionSet({ title, questions: [{ ...wine, options }] }, images))).toStrictEqual([
       {
         code: "public-text-leak",
         path: ["questions", 0, "options", 0, "note"],
-        message: "参加者に見える文に銘柄「シャトー・マルゴー」が含まれています",
+        message: "参加者に見える文に解説「B は 1本 5万円のシャトー・マルゴー。A はスーパーで買える赤ワインでした。」が含まれています",
       },
     ]);
+  });
+
+  it("選択肢の説明に銘柄を書いた問題は検証を通る", () => {
+    const options = [table, { ...bordeaux, note: "シャトー・マルゴー" }];
+    expect(parseQuestionSet({ title, questions: [{ ...wine, options }] }, images).ok).toBe(true);
   });
 
   it("選択肢の説明に写真のファイル名を含む問題は検証に失敗する", () => {

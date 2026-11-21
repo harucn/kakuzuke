@@ -10,8 +10,8 @@ const pick: Question = {
   description: "高いワインはどちら？",
   explanation: "B は 1本 5万円のボルドー。",
   options: [
-    { label: "A", image: imageUrl("/images/aaa.jpg"), note: "チリ産の赤ワイン", rank: 2, name: "テーブルワイン", price: "1本 1,000円" },
-    { label: "B", image: imageUrl("/images/bbb.jpg"), note: "フランス産の赤ワイン", rank: 1, name: "ボルドーの赤", price: "1本 5万円" },
+    { label: "A", image: imageUrl("/images/aaa.jpg"), note: "チリ産の赤ワイン", rank: 2 },
+    { label: "B", image: imageUrl("/images/bbb.jpg"), note: "フランス産の赤ワイン", rank: 1 },
   ],
 };
 
@@ -21,14 +21,14 @@ const order: Question = {
   description: "高い順に並べよ",
   explanation: "A が A5 ランク。",
   options: [
-    { label: "A", image: imageUrl("/images/ccc.jpg"), note: "霜降りの牛肉", rank: 1, name: "A5 和牛", price: "100g 5,000円" },
-    { label: "B", image: imageUrl("/images/ddd.jpg"), note: "赤身の牛肉", rank: 3, name: "輸入牛", price: "100g 300円" },
-    { label: "C", image: imageUrl("/images/eee.jpg"), note: "脂の多い牛肉", rank: 2, name: "国産牛", price: "100g 1,000円" },
+    { label: "A", image: imageUrl("/images/ccc.jpg"), note: "霜降りの牛肉", rank: 1 },
+    { label: "B", image: imageUrl("/images/ddd.jpg"), note: "赤身の牛肉", rank: 3 },
+    { label: "C", image: imageUrl("/images/eee.jpg"), note: "脂の多い牛肉", rank: 2 },
   ],
 };
 
 describe("pick の正解発表", () => {
-  it("pick で正解の選択肢に正解の印が付く", () => {
+  it("pick で正解の選択肢だけを正解の見た目にする", () => {
     const options = revealView(pick).options;
     expect(options.map((o) => [o.label, o.correct])).toEqual([
       ["A", false],
@@ -36,12 +36,6 @@ describe("pick の正解発表", () => {
     ]);
   });
 
-  it("pick の正解発表で全選択肢の銘柄と価格を表示し、順位は出さない", () => {
-    expect(revealView(pick).options.map(({ label, name, price, rank }) => ({ label, name, price, rank }))).toEqual([
-      { label: "A", name: "テーブルワイン", price: "1本 1,000円", rank: null },
-      { label: "B", name: "ボルドーの赤", price: "1本 5万円", rank: null },
-    ]);
-  });
 
   it("pick の正解発表で正解ラベルと解説を表示する", () => {
     const view = revealView(pick);
@@ -51,7 +45,7 @@ describe("pick の正解発表", () => {
 });
 
 describe("order の正解発表", () => {
-  it("order の正解発表で 1 位の選択肢に正解の印が付く", () => {
+  it("order の正解発表で 1 位の選択肢だけを正解の見た目にする", () => {
     expect(revealView(order).options.map((o) => [o.label, o.correct])).toEqual([
       ["A", true],
       ["B", false],
@@ -59,13 +53,6 @@ describe("order の正解発表", () => {
     ]);
   });
 
-  it("order の正解発表で全選択肢に順位を銘柄と価格とともに表示する", () => {
-    expect(revealView(order).options.map(({ label, name, price, rank }) => ({ label, name, price, rank }))).toEqual([
-      { label: "A", name: "A5 和牛", price: "100g 5,000円", rank: 1 },
-      { label: "B", name: "輸入牛", price: "100g 300円", rank: 3 },
-      { label: "C", name: "国産牛", price: "100g 1,000円", rank: 2 },
-    ]);
-  });
 
   it("order の正解発表で正解の並びと解説を表示する", () => {
     const view = revealView(order);
@@ -86,9 +73,9 @@ describe("正解発表の再演出", () => {
       headline: "正解は A → C → B",
       explanation: "A が A5 ランク。",
       options: [
-        { label: "A", name: "A5 和牛", price: "100g 5,000円", rank: 1, correct: true },
-        { label: "B", name: "輸入牛", price: "100g 300円", rank: 3, correct: false },
-        { label: "C", name: "国産牛", price: "100g 1,000円", rank: 2, correct: false },
+        { label: "A", correct: true },
+        { label: "B", correct: false },
+        { label: "C", correct: false },
       ],
     });
   });

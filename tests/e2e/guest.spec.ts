@@ -56,7 +56,6 @@ async function newPage(browser: Browser, options: BrowserContextOptions = {}) {
 }
 
 const status = (page: Page) => page.getByRole("status");
-const stamp = (page: Page) => page.getByTestId("stamp");
 const celebration = (page: Page) => page.getByTestId("celebration");
 const stage = (page: Page) => page.getByRole("heading", { level: 1 }).locator("small");
 
@@ -102,21 +101,17 @@ async function expectAsking(page: Page, index: number) {
   await expectNoLabels(page);
 }
 
-/** 第 index + 1 問の正解発表（正解の並び・解説・表示順の各選択肢のラベルと銘柄と価格と順位・正解の印）が表示されている */
+/** 第 index + 1 問の正解発表（正解の並び・解説・表示順の各選択肢のラベル・正解の選択肢）が表示されている */
 async function expectRevealed(page: Page, index: number) {
   const view = revealView(questions[index]);
   await expect(page.getByText(`${view.headline}！`)).toBeVisible();
   await expect(page.getByText(view.explanation)).toBeVisible();
-  await expect(stamp(page)).toHaveCount(1);
+  await expect(page.locator(".guest-opts")).not.toContainText("正解");
   for (const [i, o] of view.options.entries()) {
     await expect(optionCard(page, i)).toHaveAttribute("data-label", o.label);
     await expect(optionCard(page, i).locator(".label-bar")).toHaveText(o.label);
-    const tag = optionCard(page, i).locator(".tag");
-    await expect(tag).toContainText(o.name);
-    await expect(tag).toContainText(o.price);
-    if (o.rank === null) await expect(tag).not.toContainText("位");
-    else await expect(tag).toContainText(`${o.rank}位`);
-    await expect(optionCard(page, i).getByTestId("stamp")).toHaveCount(o.correct ? 1 : 0);
+    if (o.correct) await expect(optionCard(page, i)).toHaveClass(/option-card--correct/);
+    else await expect(optionCard(page, i)).not.toHaveClass(/option-card--correct/);
   }
 }
 
@@ -127,8 +122,6 @@ function celebrationHasDots(page: Page) {
     return data.some((v, i) => i % 4 === 3 && v > 0);
   });
 }
-
-const stampAnimation = (page: Page) => stamp(page).evaluate((el) => getComputedStyle(el).animationName);
 
 /** 会場から届いたフレームの view の index を書き換える */
 const withIndex = (index: number) => (frame: string) => frame.replace(/"index":\d+/, `"index":${index}`);
@@ -248,7 +241,6 @@ test.describe("正解発表の演出", () => {
     await operate(venue, "reveal");
     await expect(celebration(page)).toHaveCount(1);
     await expect.poll(() => celebrationHasDots(page)).toBe(true);
-    await expect.poll(() => stampAnimation(page)).not.toBe("none");
   });
 
   test("正解発表をもう一度押すと紙吹雪を再生し直す", async ({ page, baseURL }) => {
@@ -258,12 +250,11 @@ test.describe("正解発表の演出", () => {
     await expectAsking(page, PICK);
     await operate(venue, "reveal");
     await expect.poll(() => celebrationHasDots(page)).toBe(true);
-    const first = [await stamp(page).elementHandle(), await celebration(page).elementHandle()];
+    const first = await celebration(page).elementHandle();
     await operate(venue, "reveal");
-    for (const old of first) await expect.poll(() => old!.evaluate((el) => el.isConnected)).toBe(false);
+    await expect.poll(() => first!.evaluate((el) => el.isConnected)).toBe(false);
     await expect(celebration(page)).toHaveCount(1);
     await expect.poll(() => celebrationHasDots(page)).toBe(true);
-    await expect.poll(() => stampAnimation(page)).not.toBe("none");
     await expectRevealed(page, PICK);
   });
 
@@ -272,7 +263,6 @@ test.describe("正解発表の演出", () => {
     await page.goto("/");
     await expectRevealed(page, PICK);
     await expect(celebration(page)).toHaveCount(0);
-    expect(await stampAnimation(page)).toBe("none");
   });
 
   test("reduced motion が有効なときは紙吹雪を再生しない", async ({ page, baseURL }) => {
@@ -284,7 +274,6 @@ test.describe("正解発表の演出", () => {
     await operate(venue, "reveal");
     await expectRevealed(page, PICK);
     await expect(celebration(page)).toHaveCount(0);
-    expect(await stampAnimation(page)).toBe("none");
   });
 });
 
@@ -412,11 +401,10 @@ test.describe("スマホでの表示", () => {
     await expectNoHorizontalScroll(page);
     const view = revealView(questions[ORDER]);
     for (const i of view.options.keys()) {
-      for (const target of [optionCard(page, i).locator(".label-bar"), optionCard(page, i).locator(".tag")]) {
-        await target.scrollIntoViewIfNeeded();
-        await expect(target).toBeInViewport({ ratio: 1 });
-        expect(await target.evaluate((el) => el.scrollWidth <= el.clientWidth), "中身が横にはみ出さない").toBe(true);
-      }
+      const target = optionCard(page, i).locator(".label-bar");
+      await target.scrollIntoViewIfNeeded();
+      await expect(target).toBeInViewport({ ratio: 1 });
+      expect(await target.evaluate((el) => el.scrollWidth <= el.clientWidth), "中身が横にはみ出さない").toBe(true);
     }
     for (const text of [`${view.headline}！`, view.explanation]) {
       const target = page.getByText(text);
@@ -433,8 +421,8 @@ test.describe("状態の変化を全画面へ届ける", () => {
     await page.goto("/");
     await expectAsking(page, PICK);
     venue.send({ type: "reveal" });
-    // 届いたことは印で測る。正解の見出しはカードをめくり終えてから出る
-    await expect(stamp(page)).toBeVisible({ timeout: 1000 });
+    // 届いたことは正解の選択肢のカード（めくり始めた裏の面）で測る。正解の見出しはカードをめくり終えてから出る
+    await expect(page.locator(".option-card--correct")).toBeAttached({ timeout: 1000 });
     await expectRevealed(page, PICK);
   });
 

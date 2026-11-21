@@ -4,7 +4,6 @@ import type { PublicQuestionSet } from "../question-set/model.ts";
 import { CardSlot, useCardTurn } from "../ui/CardSlot.tsx";
 import { Celebration } from "../ui/Celebration.tsx";
 import { OptionCard } from "../ui/OptionCard.tsx";
-import { RevealedCard } from "../ui/RevealedCard.tsx";
 import type { VenueView } from "../venue/protocol.ts";
 import { useVenue } from "../venue/useVenue.ts";
 import { LEAK_CANARY } from "./leak-canary.ts";
@@ -64,11 +63,7 @@ function QuestionView({
       <div className="guest-opts">
         {question.options.map((o, i) => (
           <CardSlot key={i} face={reveal === null ? "asking" : "revealed"} order={i} onTurned={i === last ? onTurned : undefined}>
-            {reveal === null ? (
-              <OptionCard image={o.image} note={o.note} />
-            ) : (
-              <RevealedCard size="guest" option={o} revealed={reveal.options[i]} mode={question.mode} celebration={celebration} />
-            )}
+            <OptionCard size="guest" option={o} revealed={reveal?.options[i]} mode={question.mode} />
           </CardSlot>
         ))}
       </div>

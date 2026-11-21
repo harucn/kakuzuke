@@ -49,8 +49,8 @@ const setSchema = z.object(
             options: z
               .array(
                 z.object(
-                  { label, image: text, note: text, rank, name: text, price: text },
-                  typed("{ label, image, note, rank, name, price } の形"),
+                  { label, image: text, note: text, rank },
+                  typed("{ label, image, note, rank } の形"),
                 ),
                 typed("リスト"),
               )
@@ -68,7 +68,7 @@ const setSchema = z.object(
 type ValidInput = z.output<typeof setSchema>;
 
 type LeakKind = SecretKind | "image";
-const KIND_NAMES: Record<LeakKind, string> = { name: "銘柄", price: "価格", explanation: "解説", image: "写真のファイル名" };
+const KIND_NAMES: Record<LeakKind, string> = { explanation: "解説", image: "写真のファイル名" };
 
 export function parseQuestionSet(input: unknown, images: ReadonlyMap<string, ImageUrl>): ParseResult {
   const shape = setSchema.safeParse(input);
@@ -166,16 +166,13 @@ function* leaksIn(value: unknown, path: Issue["path"], secrets: ReadonlyMap<stri
 function secretsIn(questions: readonly unknown[]): ReadonlyMap<string, LeakKind> {
   const secrets = new Map<string, LeakKind>();
   for (const q of questions) {
-    const fields = secretFields({
-      explanation: at(q, "explanation"),
-      options: items(at(q, "options")).map((o) => ({ name: at(o, "name"), price: at(o, "price") })),
-    });
+    const fields = secretFields({ explanation: at(q, "explanation") });
     for (const { kind, value } of fields) {
       const secret = valid(text, value);
       if (secret !== undefined && !secrets.has(secret)) secrets.set(secret, kind);
     }
   }
-  // 銘柄と同じ名前の写真は銘柄として報告するので、写真のファイル名は最後に足す
+  // 解説と同じ名前の写真は解説として報告するので、写真のファイル名は最後に足す
   for (const q of questions) {
     for (const o of items(at(q, "options"))) {
       const base = valid(text, valid(text, at(o, "image"))?.replace(/\.[^.]*$/, ""));
@@ -210,8 +207,6 @@ function toQuestionSet(input: ValidInput, images: ReadonlyMap<string, ImageUrl>)
       image: images.get(o.image)!,
       note: o.note,
       rank: o.rank as Rank,
-      name: o.name,
-      price: o.price,
     })) as unknown as Options,
   }));
   return { title: input.title, questions } as unknown as QuestionSet;

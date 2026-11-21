@@ -5,7 +5,6 @@ import type { PublicQuestionSet } from "../question-set/model.ts";
 import { CardSlot, useCardTurn } from "../ui/CardSlot.tsx";
 import { Celebration } from "../ui/Celebration.tsx";
 import { OptionCard } from "../ui/OptionCard.tsx";
-import { RevealedCard } from "../ui/RevealedCard.tsx";
 import { positionOf } from "../venue/machine.ts";
 import type { Intent, VenueView } from "../venue/protocol.ts";
 import { useVenue } from "../venue/useVenue.ts";
@@ -30,15 +29,14 @@ export function HostScreen({ set }: { readonly set: PublicQuestionSet }) {
       <p role="status" className="venue-status">
         {connection === "lost" ? "再接続中" : null}
       </p>
-      {view !== null && (
-        <div className={`host${view.phase === "title" ? " host--title" : ""}`}>
-          {view.phase === "title" ? (
+      {view !== null &&
+        (view.phase === "title" ? (
+          <div className="host host--title">
             <TitleStage set={set} operate={operate} onFullscreen={onFullscreen} />
-          ) : (
-            <Stage key={view.index} set={set} view={view} celebration={celebration} operate={operate} onFullscreen={onFullscreen} />
-          )}
-        </div>
-      )}
+          </div>
+        ) : (
+          <Stage key={view.index} set={set} view={view} celebration={celebration} operate={operate} onFullscreen={onFullscreen} />
+        ))}
     </main>
   );
 }
@@ -93,29 +91,28 @@ function Stage({
 
   return (
     <>
-      <h1 className="host-title">
-        <small>STAGE {index + 1}</small>
-        {question.title}
-      </h1>
-      <div className="host-opts">
-        {question.options.map((o, i) => (
-          <CardSlot key={i} face={reveal === null ? "asking" : "revealed"} order={i} onTurned={i === last ? onTurned : undefined}>
-            {reveal === null ? (
-              <OptionCard size="host" image={o.image} note={o.note} />
-            ) : (
-              <RevealedCard size="host" option={o} revealed={reveal.options[i]} mode={question.mode} celebration={celebration} />
-            )}
-          </CardSlot>
-        ))}
-      </div>
-      <div className="host-foot">
-        <div className="msg px" aria-live="polite">
-          <span className="who">{message.who}</span>
-          <Typed key={message.text} text={message.text} />
-          <span className="caret" aria-hidden="true" />
+      <div className="host">
+        <h1 className="host-title">
+          <small>STAGE {index + 1}</small>
+          {question.title}
+        </h1>
+        <div className="host-opts">
+          {question.options.map((o, i) => (
+            <CardSlot key={i} face={reveal === null ? "asking" : "revealed"} order={i} onTurned={i === last ? onTurned : undefined}>
+              <OptionCard size="host" option={o} revealed={reveal?.options[i]} mode={question.mode} />
+            </CardSlot>
+          ))}
         </div>
-        <Controls position={index} total={questions.length} operate={operate} onFullscreen={onFullscreen} />
+        <div className="host-foot">
+          <div className="msg px" aria-live="polite">
+            <span className="who">{message.who}</span>
+            <Typed key={message.text} text={message.text} />
+            <span className="caret" aria-hidden="true" />
+          </div>
+          <Controls position={index} total={questions.length} operate={operate} onFullscreen={onFullscreen} />
+        </div>
       </div>
+      {/* 16:9 の枠の外に置き、表示中の画面（全画面ならその画面）のてっぺんから降らせる。最後の 1 枚をめくり終えてから降らせる */}
       {celebration !== null && !turning && <Celebration key={celebration} />}
     </>
   );

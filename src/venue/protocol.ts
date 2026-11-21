@@ -14,10 +14,6 @@ export type Intent = z.infer<typeof IntentSchema>;
 const RevealedOptionSchema = z
   .strictObject({
     label: z.enum(["A", "B", "C"]),
-    name: z.string(),
-    price: z.string(),
-    /** order だけ表示する。pick では null */
-    rank: z.literal([1, 2, 3]).nullable(),
     correct: z.boolean(),
   })
   .readonly();

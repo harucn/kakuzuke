@@ -20,8 +20,8 @@ const wine: Question = {
   description: "高いワインはどちら？",
   explanation: "B は 1本 5万円のボルドー。",
   options: [
-    { label: "A", image: imageUrl("/images/aaa.jpg"), note: "チリ産の赤ワイン", rank: 2, name: "テーブルワイン", price: "1本 1,000円" },
-    { label: "B", image: imageUrl("/images/bbb.jpg"), note: "フランス産の赤ワイン", rank: 1, name: "ボルドーの赤", price: "1本 5万円" },
+    { label: "A", image: imageUrl("/images/aaa.jpg"), note: "チリ産の赤ワイン", rank: 2 },
+    { label: "B", image: imageUrl("/images/bbb.jpg"), note: "フランス産の赤ワイン", rank: 1 },
   ],
 };
 
@@ -31,9 +31,9 @@ const beef: Question = {
   description: "高い順に並べよ",
   explanation: "A が A5 ランク。",
   options: [
-    { label: "A", image: imageUrl("/images/ccc.jpg"), note: "霜降りの牛肉", rank: 1, name: "A5 和牛", price: "100g 5,000円" },
-    { label: "B", image: imageUrl("/images/ddd.jpg"), note: "赤身の牛肉", rank: 3, name: "輸入牛", price: "100g 300円" },
-    { label: "C", image: imageUrl("/images/eee.jpg"), note: "脂の多い牛肉", rank: 2, name: "国産牛", price: "100g 1,000円" },
+    { label: "A", image: imageUrl("/images/ccc.jpg"), note: "霜降りの牛肉", rank: 1 },
+    { label: "B", image: imageUrl("/images/ddd.jpg"), note: "赤身の牛肉", rank: 3 },
+    { label: "C", image: imageUrl("/images/eee.jpg"), note: "脂の多い牛肉", rank: 2 },
   ],
 };
 
@@ -44,8 +44,8 @@ const water: Question = {
   description: "高い水はどちら？",
   explanation: "A は水道水。",
   options: [
-    { label: "B", image: imageUrl("/images/ggg.jpg"), note: "海外の水", rank: 1, name: "輸入牛", price: "1本 3,000円" },
-    { label: "A", image: imageUrl("/images/fff.jpg"), note: "国内の水", rank: 2, name: "水道水", price: "1本 1,000円" },
+    { label: "B", image: imageUrl("/images/ggg.jpg"), note: "海外の水", rank: 1 },
+    { label: "A", image: imageUrl("/images/fff.jpg"), note: "国内の水", rank: 2 },
   ],
 };
 
@@ -62,12 +62,10 @@ describe("answerOf", () => {
 describe("toPublic", () => {
   const publicSet = toPublic(questionSet("2026 忘年会 格付けチェック", wine, beef, water));
 
-  it("公開形は rank・name・price を含まない", () => {
+  it("公開形は rank を含まない", () => {
     for (const q of publicSet.questions) {
       for (const o of q.options) {
         expect(o).not.toHaveProperty("rank");
-        expect(o).not.toHaveProperty("name");
-        expect(o).not.toHaveProperty("price");
       }
     }
   });
@@ -145,22 +143,10 @@ describe("toPublic", () => {
 });
 
 describe("secretStrings", () => {
-  it("returns every option name and price and every explanation, without duplicates", () => {
-    expect(secretStrings(questionSet("会", wine, beef, water))).toStrictEqual([
-      "テーブルワイン",
-      "1本 1,000円",
-      "ボルドーの赤",
-      "1本 5万円",
+  it("returns every explanation, without duplicates", () => {
+    expect(secretStrings(questionSet("会", wine, beef, water, wine))).toStrictEqual([
       "B は 1本 5万円のボルドー。",
-      "A5 和牛",
-      "100g 5,000円",
-      "輸入牛",
-      "100g 300円",
-      "国産牛",
-      "100g 1,000円",
       "A が A5 ランク。",
-      "1本 3,000円",
-      "水道水",
       "A は水道水。",
     ]);
   });
