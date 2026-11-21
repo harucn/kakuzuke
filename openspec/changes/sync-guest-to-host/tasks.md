@@ -55,7 +55,7 @@
 
 ## 3. 購読 API
 
-- [ ] 3.1 `src/venue/useVenue.ts` に、`openVenueSocket(url, deps)` と、それを `useSyncExternalStore` で包んだ `useVenue(role)` を書く（Decisions 4・5）。
+- [x] 3.1 `src/venue/useVenue.ts` に、`openVenueSocket(url, deps)` と、それを `useSyncExternalStore` で包んだ `useVenue(role)` を書く（Decisions 4・5）。
   - 単体テスト（偽の `WebSocket`・`document`・時計・`location`）:
     - 最初のフレームまでは `connecting` で、`operate` は null である。フレームを受け取ると `open` になる。
     - 5 秒たってもフレームが届かなければ `lost` になる。`lost` から `connecting` へは戻らない。
