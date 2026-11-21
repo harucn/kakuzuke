@@ -10,9 +10,6 @@ export function revealView(q: Question): RevealView {
     explanation: q.explanation,
     options: q.options.map((o) => ({
       label: o.label,
-      name: o.name,
-      price: o.price,
-      rank: answer.mode === "order" ? o.rank : null,
       correct: o.label === order[0],
     })),
   };

@@ -89,7 +89,7 @@ async function publicData(): Promise<PublicQuestionSet> {
 
 describe("参加者に届くデータに正解情報を含めない", () => {
   it("秘密リストが空でなく件数が一致する", () => {
-    const expected = new Set(questions.flatMap((q) => [q.explanation, ...q.options.flatMap((o) => [o.name, o.price])]));
+    const expected = new Set(questions.map((q) => q.explanation));
     expect(secrets.length).toBeGreaterThan(0);
     expect(secrets).toHaveLength(expected.size);
     expect(new Set(secrets)).toEqual(expected);

@@ -5,5 +5,5 @@ questions:
     description: 高いのはどちら？
     explanation: B は顔料が高価でした。
     options:
-      - { label: A, image: a.png, note: チューブ入りの絵の具, rank: 2, name: 赤い絵の具, price: "100円" }
-      - { label: B, image: b.png, note: 瓶入りの絵の具, rank: 1, name: 青い絵の具, price: "200円" }
+      - { label: A, image: a.png, note: チューブ入りの絵の具, rank: 2 }
+      - { label: B, image: b.png, note: 瓶入りの絵の具, rank: 1 }

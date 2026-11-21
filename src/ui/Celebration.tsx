@@ -3,8 +3,10 @@ import { palette } from "../styles/tokens.ts";
 
 const HEART = ["0110110", "1111111", "1111111", "0111110", "0011100", "0001000"];
 const COLORS = [palette.red, palette.green, palette.pink];
-/** canvas の 1 ドットが占める CSS ピクセル */
-const DOT = 4;
+/** canvas の 1 ドットが占める CSS ピクセルの下限。スマホ幅でもハートが小さくなりすぎないようにする */
+const MIN_DOT = 4;
+/** 画面の幅に並ぶドットの数。1280px 幅で 1 ドット 4px になり、画面が広いほどドットも大きくして、画面に対するハートの大きさを保つ */
+const DOTS_ACROSS = 320;
 const HEART_COUNT = 28;
 const DURATION_MS = 4000;
 const REDUCE = "(prefers-reduced-motion: reduce)";
@@ -30,8 +32,9 @@ export function Celebration() {
     const canvas = ref.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
-    const width = (canvas.width = Math.floor(canvas.clientWidth / DOT));
-    const height = (canvas.height = Math.floor(canvas.clientHeight / DOT));
+    const dot = Math.max(MIN_DOT, canvas.clientWidth / DOTS_ACROSS);
+    const width = (canvas.width = Math.floor(canvas.clientWidth / dot));
+    const height = (canvas.height = Math.floor(canvas.clientHeight / dot));
     const hearts = Array.from({ length: HEART_COUNT }, () => ({
       x: Math.round(Math.random() * width),
       y: -Math.random() * height * 0.6,

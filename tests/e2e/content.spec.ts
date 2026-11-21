@@ -119,15 +119,11 @@ async function expectRevealed(page: Page, index: number) {
   const view = revealView(questions[index]);
   await expect(page.getByText(`${view.headline}！`)).toBeVisible();
   await expect(page.locator(".msg")).toContainText(view.explanation);
-  await expect(page.getByTestId("stamp")).toHaveCount(1);
+  await expect(page.locator(".host-opts")).not.toContainText("正解");
   for (const [i, o] of view.options.entries()) {
     await expect(optionCard(page, i)).toHaveAttribute("data-label", o.label);
     await expect(card(page, o.label).locator(".label-bar")).toHaveText(o.label);
-    const tag = card(page, o.label).locator(".tag");
-    await expect(tag).toContainText(o.name);
-    await expect(tag).toContainText(o.price);
-    if (o.rank !== null) await expect(tag).toContainText(`${o.rank}位`);
-    if (o.correct) await expect(card(page, o.label).getByTestId("stamp")).toBeVisible();
+    if (o.correct) await expect(card(page, o.label)).toHaveClass(/option-card--correct/);
   }
 }
 

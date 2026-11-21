@@ -18,8 +18,8 @@ export const venueSet = questionSet(
     description: "高いワインはどちら？",
     explanation: "解説その一",
     options: [
-      { label: "A", image: imageUrl("/images/a1.jpg"), note: "赤ワイン甲", rank: 2, name: "銘柄一甲", price: "価格一甲" },
-      { label: "B", image: imageUrl("/images/b1.jpg"), note: "赤ワイン乙", rank: 1, name: "銘柄一乙", price: "価格一乙" },
+      { label: "A", image: imageUrl("/images/a1.jpg"), note: "赤ワイン甲", rank: 2 },
+      { label: "B", image: imageUrl("/images/b1.jpg"), note: "赤ワイン乙", rank: 1 },
     ],
   },
   {
@@ -28,9 +28,9 @@ export const venueSet = questionSet(
     description: "高い順に並べよ",
     explanation: "解説その二",
     options: [
-      { label: "A", image: imageUrl("/images/a2.jpg"), note: "牛肉甲", rank: 1, name: "銘柄二甲", price: "価格二甲" },
-      { label: "B", image: imageUrl("/images/b2.jpg"), note: "牛肉乙", rank: 3, name: "銘柄二乙", price: "価格二乙" },
-      { label: "C", image: imageUrl("/images/c2.jpg"), note: "牛肉丙", rank: 2, name: "銘柄二丙", price: "価格二丙" },
+      { label: "A", image: imageUrl("/images/a2.jpg"), note: "牛肉甲", rank: 1 },
+      { label: "B", image: imageUrl("/images/b2.jpg"), note: "牛肉乙", rank: 3 },
+      { label: "C", image: imageUrl("/images/c2.jpg"), note: "牛肉丙", rank: 2 },
     ],
   },
   {
@@ -39,9 +39,9 @@ export const venueSet = questionSet(
     description: "高いチョコはどれ？",
     explanation: "解説その三",
     options: [
-      { label: "A", image: imageUrl("/images/a3.jpg"), note: "板チョコ甲", rank: 3, name: "銘柄三甲", price: "価格三甲" },
-      { label: "B", image: imageUrl("/images/b3.jpg"), note: "板チョコ乙", rank: 1, name: "銘柄三乙", price: "価格三乙" },
-      { label: "C", image: imageUrl("/images/c3.jpg"), note: "板チョコ丙", rank: 2, name: "銘柄三丙", price: "価格三丙" },
+      { label: "A", image: imageUrl("/images/a3.jpg"), note: "板チョコ甲", rank: 3 },
+      { label: "B", image: imageUrl("/images/b3.jpg"), note: "板チョコ乙", rank: 1 },
+      { label: "C", image: imageUrl("/images/c3.jpg"), note: "板チョコ丙", rank: 2 },
     ],
   },
 );
