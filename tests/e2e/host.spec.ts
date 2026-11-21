@@ -4,7 +4,8 @@ import jsQR from "jsqr";
 import { PNG } from "pngjs";
 import { answerOf, secretStrings, type Answer, type Label } from "../../src/question-set/model.ts";
 import { loadQuestionSet } from "../../src/question-set/vite-plugin.ts";
-import { expectNoLabels, expectOptions, labelTraces, optionCard, photoBoxes } from "./options.ts";
+import { revealView } from "../../src/venue/view.ts";
+import { expectNoLabels, expectOptions, labelTraces, optionCard, photoBoxes, settleCards } from "./options.ts";
 import { connectVenue, relayVenue, resetVenue, skipIfRemote } from "./venue.ts";
 
 test.beforeEach(async ({ baseURL }) => {
@@ -413,6 +414,7 @@ async function revealAt(page: Page, index: number) {
   await goTo(page, index);
   await revealButton(page).click();
   await expect(stamp(page)).toBeVisible();
+  await settleCards(page);
 }
 
 /** 印は rank 1 の選択肢にだけ付く */
@@ -581,5 +583,59 @@ test.describe("正解発表の再演出", () => {
     for (const o of q.options) await expect(card(page, o.label)).toContainText(o.name);
     await expect(celebration(page)).toHaveCount(0);
     expect(await stamp(page).evaluate((el) => getComputedStyle(el).animationName)).toBe("none");
+  });
+});
+
+test.describe("正解発表でカードをめくる", () => {
+  const slotAnimations = (page: Page) => page.locator(".card-slot").evaluateAll((slots) => slots.map((el) => getComputedStyle(el).animationName));
+
+  test("問題が出たときはめくらず、正解発表でめくって答えの面を出す", async ({ page }) => {
+    await openHost(page);
+    await goTo(page, ORDER);
+    expect(await slotAnimations(page)).toEqual(["none", "none", "none"]);
+    const slot = await page.locator(".card-slot").first().elementHandle();
+    await revealButton(page).click();
+    await expect.poll(() => slotAnimations(page)).toEqual(["flip", "flip", "flip"]);
+    await expect(stamp(page)).toBeVisible();
+    await expect.poll(() => slotAnimations(page)).toEqual(["none", "none", "none"]);
+    expect(await slot!.evaluate((el) => el.isConnected), "正解発表の前後で同じ置き場所").toBe(true);
+  });
+
+  test("左から順にめくる", async ({ page }) => {
+    await openHost(page);
+    await goTo(page, ORDER);
+    await revealButton(page).click();
+    await expect.poll(() => slotAnimations(page)).toEqual(["flip", "flip", "flip"]);
+    const delays = await page.locator(".card-slot").evaluateAll((slots) => slots.map((el) => parseFloat(getComputedStyle(el).animationDelay)));
+    expect(delays).toEqual([...delays].sort((a, b) => a - b));
+    expect(new Set(delays).size).toBe(delays.length);
+  });
+
+  test("最後の 1 枚をめくり終えてから正解のメッセージと紙吹雪を出す", async ({ page }) => {
+    await openHost(page);
+    await goTo(page, ORDER);
+    const { headline } = revealView(questions[ORDER]);
+    await revealButton(page).click();
+    await expect.poll(() => slotAnimations(page)).toEqual(["flip", "flip", "flip"]);
+    await expect(page.locator(".msg")).toContainText(questions[ORDER].description);
+    await expect(celebration(page)).toHaveCount(0);
+    await expect.poll(() => slotAnimations(page)).toEqual(["none", "none", "none"]);
+    await expect(page.locator(".msg")).toContainText(`${headline}！`);
+    await expect(celebration(page)).toHaveCount(1);
+  });
+
+  test("正解発表中に開いたときはめくらない", async ({ page }) => {
+    await revealAt(page, PICK);
+    await page.reload();
+    await expect(stamp(page)).toBeVisible();
+    expect(await slotAnimations(page)).toEqual(["none", "none"]);
+  });
+
+  test("reduced motion が有効なときはめくらない", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await openHost(page);
+    await revealButton(page).click();
+    await expect(stamp(page)).toBeVisible();
+    expect(await slotAnimations(page)).toEqual(["none", "none"]);
   });
 });

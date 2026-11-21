@@ -8,7 +8,7 @@ import { revealView } from "../../src/venue/view.ts";
 import { secretStrings, type Label } from "../../src/question-set/model.ts";
 import { loadQuestionSet } from "../../src/question-set/vite-plugin.ts";
 import { findSecrets } from "../leak.ts";
-import { expectNoLabels, expectOptions, optionCard, photoBoxes } from "./options.ts";
+import { expectNoLabels, expectOptions, optionCard, photoBoxes, settleCards } from "./options.ts";
 import { connectHost, freshVenue, operate, recordTraffic, skipIfRemote, TEXT_TYPE, viewShapeProblems } from "./venue.ts";
 
 test.beforeEach(freshVenue);
@@ -67,6 +67,7 @@ const LAYOUTS = {
 
 /** 1920×1080 で、画面の要素（LAYOUTS）が表示領域と 16:9 の枠に収まり、ページも解説欄もスクロールしない。収まらない要素の一覧を返す */
 async function overflows(page: Page, layout: keyof typeof LAYOUTS): Promise<string[]> {
+  await settleCards(page);
   return page.evaluate(async ({ targets: selectors, min }) => {
     void document.body.offsetHeight;
     await document.fonts.ready;

@@ -28,8 +28,14 @@ export async function expectOptions(page: Page, options: readonly { readonly ima
   }
 }
 
+/** 正解発表のめくりが終わるまで待つ。めくっている間の座標は回転を含み、表と裏の 2 枚が重なっているので、測る前に呼ぶ */
+export async function settleCards(page: Page) {
+  await page.locator(".card-slot").evaluateAll((slots) => Promise.all(slots.flatMap((slot) => slot.getAnimations().map((a) => a.finished))));
+}
+
 /** 表示順の写真の src と座標・大きさ */
-export function photoBoxes(page: Page) {
+export async function photoBoxes(page: Page) {
+  await settleCards(page);
   return page
     .locator(".option-card img")
     .evaluateAll((imgs: HTMLImageElement[]) => imgs.map((img) => ({ src: img.getAttribute("src"), box: img.getBoundingClientRect().toJSON() })));

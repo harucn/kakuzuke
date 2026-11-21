@@ -433,8 +433,8 @@ test.describe("状態の変化を全画面へ届ける", () => {
     await page.goto("/");
     await expectAsking(page, PICK);
     venue.send({ type: "reveal" });
+    // 届いたことは印で測る。正解の見出しはカードをめくり終えてから出る
     await expect(stamp(page)).toBeVisible({ timeout: 1000 });
-    await expect(page.getByText(`${revealView(questions[PICK]).headline}！`)).toBeVisible({ timeout: 1000 });
     await expectRevealed(page, PICK);
   });
 

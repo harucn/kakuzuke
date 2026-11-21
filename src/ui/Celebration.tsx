@@ -9,7 +9,7 @@ const HEART_COUNT = 28;
 const DURATION_MS = 4000;
 const REDUCE = "(prefers-reduced-motion: reduce)";
 
-function useReducedMotion(): boolean {
+export function useReducedMotion(): boolean {
   return useSyncExternalStore(
     (onChange) => {
       const query = matchMedia(REDUCE);

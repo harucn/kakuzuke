@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { preload } from "react-dom";
 import { boundsOf, type Position } from "../deck/cursor.ts";
 import type { PublicQuestionSet } from "../question-set/model.ts";
+import { CardSlot, useCardTurn } from "../ui/CardSlot.tsx";
 import { Celebration } from "../ui/Celebration.tsx";
 import { OptionCard } from "../ui/OptionCard.tsx";
 import { RevealedCard } from "../ui/RevealedCard.tsx";
@@ -34,7 +35,7 @@ export function HostScreen({ set }: { readonly set: PublicQuestionSet }) {
           {view.phase === "title" ? (
             <TitleStage set={set} operate={operate} onFullscreen={onFullscreen} />
           ) : (
-            <Stage set={set} view={view} celebration={celebration} operate={operate} onFullscreen={onFullscreen} />
+            <Stage key={view.index} set={set} view={view} celebration={celebration} operate={operate} onFullscreen={onFullscreen} />
           )}
         </div>
       )}
@@ -85,7 +86,10 @@ function Stage({
   const { questions } = set;
   const question = questions[index];
   const reveal = view.phase === "revealed" ? view.reveal : null;
-  const message = reveal === null ? { who: "Q.", text: question.description } : { who: `${reveal.headline}！`, text: reveal.explanation };
+  const { turning, onTurned } = useCardTurn(reveal !== null);
+  // めくり終えるまでは問題の説明のまま。最後の 1 枚がめくれてから正解と解説を打ち始める
+  const message = reveal === null || turning ? { who: "Q.", text: question.description } : { who: `${reveal.headline}！`, text: reveal.explanation };
+  const last = question.options.length - 1;
 
   return (
     <>
@@ -94,23 +98,25 @@ function Stage({
         {question.title}
       </h1>
       <div className="host-opts">
-        {question.options.map((o, i) =>
-          reveal === null ? (
-            <OptionCard key={i} size="host" image={o.image} note={o.note} />
-          ) : (
-            <RevealedCard key={i} size="host" option={o} revealed={reveal.options[i]} mode={question.mode} celebration={celebration} />
-          ),
-        )}
+        {question.options.map((o, i) => (
+          <CardSlot key={i} face={reveal === null ? "asking" : "revealed"} order={i} onTurned={i === last ? onTurned : undefined}>
+            {reveal === null ? (
+              <OptionCard size="host" image={o.image} note={o.note} />
+            ) : (
+              <RevealedCard size="host" option={o} revealed={reveal.options[i]} mode={question.mode} celebration={celebration} />
+            )}
+          </CardSlot>
+        ))}
       </div>
       <div className="host-foot">
         <div className="msg px" aria-live="polite">
           <span className="who">{message.who}</span>
-          <Typed key={`${index}:${view.phase}`} text={message.text} />
+          <Typed key={message.text} text={message.text} />
           <span className="caret" aria-hidden="true" />
         </div>
         <Controls position={index} total={questions.length} operate={operate} onFullscreen={onFullscreen} />
       </div>
-      {celebration !== null && <Celebration key={celebration} />}
+      {celebration !== null && !turning && <Celebration key={celebration} />}
     </>
   );
 }
