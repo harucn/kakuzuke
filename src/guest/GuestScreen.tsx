@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { preload } from "react-dom";
 import type { PublicQuestionSet } from "../question-set/model.ts";
+import { CardSlot, useCardTurn } from "../ui/CardSlot.tsx";
 import { Celebration } from "../ui/Celebration.tsx";
 import { OptionCard } from "../ui/OptionCard.tsx";
 import { RevealedCard } from "../ui/RevealedCard.tsx";
@@ -33,7 +34,7 @@ export function GuestScreen({ set }: { readonly set: PublicQuestionSet }) {
           <h1 className="guest-cover__title">{set.title}</h1>
         </div>
       ) : (
-        <QuestionView set={set} view={shown} celebration={celebration} />
+        <QuestionView key={shown.index} set={set} view={shown} celebration={celebration} />
       )}
     </main>
   );
@@ -51,6 +52,8 @@ function QuestionView({
   const { index } = view;
   const question = set.questions[index];
   const reveal = view.phase === "revealed" ? view.reveal : null;
+  const { turning, onTurned } = useCardTurn(reveal !== null);
+  const last = question.options.length - 1;
   return (
     <>
       <h1 className="guest-title">
@@ -59,21 +62,23 @@ function QuestionView({
       </h1>
       <p className="guest-desc">{question.description}</p>
       <div className="guest-opts">
-        {question.options.map((o, i) =>
-          reveal === null ? (
-            <OptionCard key={i} image={o.image} note={o.note} />
-          ) : (
-            <RevealedCard key={i} size="guest" option={o} revealed={reveal.options[i]} mode={question.mode} celebration={celebration} />
-          ),
-        )}
+        {question.options.map((o, i) => (
+          <CardSlot key={i} face={reveal === null ? "asking" : "revealed"} order={i} onTurned={i === last ? onTurned : undefined}>
+            {reveal === null ? (
+              <OptionCard image={o.image} note={o.note} />
+            ) : (
+              <RevealedCard size="guest" option={o} revealed={reveal.options[i]} mode={question.mode} celebration={celebration} />
+            )}
+          </CardSlot>
+        ))}
       </div>
-      {reveal !== null && (
+      {reveal !== null && !turning && (
         <div className="guest-reveal px">
           <p className="guest-reveal__headline">{reveal.headline}！</p>
           <p className="guest-reveal__text">{reveal.explanation}</p>
         </div>
       )}
-      {celebration !== null && <Celebration key={celebration} />}
+      {celebration !== null && !turning && <Celebration key={celebration} />}
     </>
   );
 }
