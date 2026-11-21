@@ -33,9 +33,6 @@ export type QuestionSet = {
   readonly questions: readonly [Question, ...Question[]];
 } & { readonly __brand: "QuestionSet" };
 
-/** 司会画面の loader の値。ブランドは createServerFn の直列化の型検査を通らないので持たない */
-export type HostQuestionSet = Omit<QuestionSet, "__brand">;
-
 export type PublicOption = Pick<Option, "image" | "note">;
 export type PublicQuestion = Pick<Question, "mode" | "title" | "description"> & {
   readonly options: readonly [PublicOption, PublicOption] | readonly [PublicOption, PublicOption, PublicOption];

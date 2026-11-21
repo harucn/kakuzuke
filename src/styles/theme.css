@@ -124,7 +124,7 @@ body {
   margin-right: 0.4em;
 }
 
-/* 「正解！」の印。点滅は再マウント（key={run}）で最初から再生される */
+/* 「正解！」の印。点滅は --blink のときだけで、再マウント（key）で最初から再生される */
 .stamp {
   position: absolute;
   top: 42%;
@@ -145,7 +145,7 @@ body {
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .stamp {
+  .stamp--blink {
     animation: blink 0.5s steps(1) 4;
   }
 }
@@ -232,6 +232,20 @@ body {
   .typed > span {
     animation: type-in 0s backwards;
   }
+}
+
+/* 「再接続中」。画面の上に重ね、レイアウトを動かさない。空のときも置いておき、出たことを読み上げさせる */
+.venue-status {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
+  margin: 0;
+}
+.venue-status:not(:empty) {
+  background: var(--red);
+  color: var(--paper);
+  padding: 6px 12px;
 }
 
 /* 司会画面: ビューポートに収まる最大の 16:9。中の寸法は cqw（枠の幅の 1%）で決める。

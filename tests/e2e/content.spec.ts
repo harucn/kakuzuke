@@ -8,7 +8,7 @@ import { secretStrings, type Label } from "../../src/question-set/model.ts";
 import { loadQuestionSet } from "../../src/question-set/vite-plugin.ts";
 import { findSecrets } from "../leak.ts";
 import { expectNoLabels, expectOptions, optionCard, photoBoxes } from "./options.ts";
-import { freshVenue } from "./venue.ts";
+import { freshVenue, skipIfRemote } from "./venue.ts";
 
 test.beforeEach(freshVenue);
 
@@ -138,11 +138,28 @@ const drivers = [
 test.describe("司会画面", () => {
   test.use({ viewport: { width: 1920, height: 1080 } });
 
-  for (const driver of drivers) {
-    test(`${driver.name}で全問を進めて正解発表し、溢れずサーバー関数も呼ばない`, async ({ page }) => {
-      const requests: string[] = [];
-      page.on("request", (r) => requests.push(r.url()));
+  // 会場を動かさないので BASE_URL でも流す。正解は会場からの WebSocket でだけ届き、HTTP の応答には載らない
+  test("開いてもサーバー関数を呼ばず、HTTP の応答に正解情報がない", async ({ page }) => {
+    const requests: string[] = [];
+    const bodies: Promise<{ readonly url: string; readonly text: string }>[] = [];
+    page.on("request", (r) => requests.push(r.url()));
+    page.on("response", (r) => {
+      if (r.status() >= 300 && r.status() < 400) return;
+      if (TEXT_TYPE.test(r.headers()["content-type"] ?? "")) bodies.push(r.text().then((text) => ({ url: r.url(), text })));
+    });
+    await page.goto("/host");
+    await expect(page.locator(".host")).toBeVisible();
+    const texts = await Promise.all(bodies);
 
+    expect(texts.map(({ url }) => new URL(url).pathname), "/host の HTML を検査できている").toContain("/host");
+    expect(requests.filter((url) => url.includes(SERVER_FN))).toEqual([]);
+    const leaks = texts.flatMap(({ url, text }) => findSecrets(text, secrets).map((hit) => `${url}: 「${hit.secret}」 …${hit.context}…`));
+    expect(leaks).toEqual([]);
+  });
+
+  for (const driver of drivers) {
+    test(`${driver.name}で全問を進めて正解発表し、溢れない`, async ({ page }) => {
+      skipIfRemote();
       await page.goto("/host");
       await expect(page.getByRole("heading", { level: 1 })).toHaveText(set.title);
       await expect(page.getByRole("img", { name: "参加者画面の QR コード" })).toBeVisible();
@@ -162,10 +179,7 @@ test.describe("司会画面", () => {
       await expect(nextButton(page)).toBeDisabled();
 
       await page.reload();
-      await expectQuestion(page, last);
-
-      expect(requests.some((url) => new URL(url).pathname === "/host"), "/host の取得を記録できている").toBe(true);
-      expect(requests.filter((url) => url.includes(SERVER_FN))).toEqual([]);
+      await expectRevealed(page, last);
     });
   }
 });

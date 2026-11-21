@@ -1,5 +1,5 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
-import { initialHostState, step } from "../../src/host/machine.ts";
+import { step } from "../../src/venue/machine.ts";
 import { revealView } from "../../src/venue/view.ts";
 import type { Question } from "../../src/question-set/model.ts";
 import { imageUrl } from "./fixtures.ts";
@@ -79,7 +79,7 @@ describe("正解発表の再演出", () => {
     expectTypeOf<Parameters<typeof revealView>>().toEqualTypeOf<[q: Question]>();
     const questions = [pick, order] as const;
     const reveal = { type: "reveal" } as const;
-    const first = step(step(initialHostState, { type: "restore", index: 1 }, questions.length), reveal, questions.length);
+    const first = step({ phase: "asking", index: 1 }, reveal, questions.length);
     const second = step(first, reveal, questions.length);
     expect(second).toMatchObject({ phase: "revealed", index: 1, run: 2 });
     expect(revealView(questions[second.phase === "revealed" ? second.index : 0])).toEqual({

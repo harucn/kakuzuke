@@ -69,7 +69,7 @@
 
 ## 4. 司会画面を会場につなぐ
 
-- [ ] 4.1 `HostScreen` を `useVenue("host")` に移す（Decisions 3・4・5・8）。
+- [x] 4.1 `HostScreen` を `useVenue("host")` に移す（Decisions 3・4・5・8）。
   - `/host` の loader と `getHostQuestionSet`・`host-data.functions.ts` を消し、`virtual:kakuzuke/public` を使う。
   - `src/host/machine.ts`・`src/host/restore.ts`・`tests/unit/restore.test.ts`・`tests/unit/machine.test.ts` を消す。
   - 正解発表の表示は `view.reveal` を添字で引いて描く。表示部品と `Celebration.tsx` は `src/ui/` へ移す。
