@@ -107,7 +107,7 @@ webSocketMessage(ws, data) {
 
 ### 3. 漏洩の関所は `viewOf` の 1 関数
 
-- `virtual:kakuzuke/answers` を import するのは `src/venue/durable-object.ts` だけにする。
+- `virtual:kakuzuke/answers` を import するのは `src/venue/durable-object.ts` だけにする。会場の中身は `src/venue/room.ts` の `VenueRoom` に置き、DO はそれに問題セットと版を渡す薄い殻にする。`VenueRoom` は virtual module と `cloudflare:workers` を読まないので、偽の ctx で単体テストできる。
 - 配る view を作るのは `viewOf(state, set)` だけにする。`revealed` の枝でだけ `revealView(set.questions[index])` を呼ぶ。`viewOf` は `toPublic` と同じ許可リスト方式で、項目ごとに新しいオブジェクトを作る。spread はしない。
 - 司会画面は `/host` の loader をやめ、参加者と同じ `virtual:kakuzuke/public` を使う。発表前の司会画面は公開情報しか出さないので、これで足りる。正解は `VenueView` で受け取る。
 - `getHostQuestionSet` と `host-data.functions.ts` は削除する。これで `/host` の HTML と、認証なしのサーバー関数の応答から正解が消える。
@@ -133,13 +133,13 @@ interface HostVenueConnection extends VenueConnection {
 }
 ```
 
-- ページにつき 1 本のソケットを `useSyncExternalStore` で共有する。中身は React に依存しない `openVenueSocket(url, deps)` に置く。単体テストでは `WebSocket`・`document`・時計を差し替える。
+- ページにつき 1 本のソケットを `useSyncExternalStore` で共有する。中身は React に依存しない `openVenueSocket(url, deps)` に置き、`src/venue/socket.ts` に分ける（単体テストが `virtual:kakuzuke/public` を解決しなくて済むように）。単体テストでは `WebSocket`・`document`・時計を差し替える。
 - ソケットは subscribe されたときに初めて開く。`getServerSnapshot` は `{ view: null, connection: "connecting" }` を返すので、SSR と事前レンダリングでは接続しない。
 - `connection` の遷移は次のとおりとする。
   - `open` になるのは、その接続で最初のフレームを受け取ったとき。ソケットが開いたときではない（候補 B から移植）。
   - `lost` になるのは、接続が切れたとき、または開いてから 5 秒たってもフレームが届かないとき。
   - `lost` から `connecting` へは戻さず、次にフレームが届くまで `lost` のままにする。再接続を試すたびに「再接続中」が点滅しないようにするためである。
-- `operate` は `open` のときだけ関数で、それ以外は `null` である。そのため、切断中にキーやボタンを押しても何も溜まらない。
+- `operate` は `open` で、かつ版の合う状態を受け取っているときだけ関数で、それ以外は `null` である。版が違う間は画面に何も出ないので、見えないまま会場を動かさないようにする。そのため、切断中にキーやボタンを押しても何も溜まらない。
 - 接続が生きているかを確かめるため、表示中は 15 秒ごとに `PING` を送る。3 秒以内に `PONG` が返らなければ閉じて再接続する。`visibilitychange` で表示に戻ったときも、同じ確認をすぐに行う。`PONG` はフレームとして数えず、`open` への遷移にも使わない。
 - 再接続は、上限 5 秒の指数バックオフに、0〜1 秒の揺らぎを足して行う。
 - フレームの `publicVersion` が自分の `virtual:kakuzuke/public` の `version` と違うときは、`location.reload()` する。
@@ -163,11 +163,11 @@ interface HostVenueConnection extends VenueConnection {
 import handler from "@tanstack/react-start/server-entry";
 export { Venue } from "./venue/durable-object.ts";
 export default {
-  fetch(request: Request, env: Env, ctx: ExecutionContext) {
+  fetch(request: Request, env: Env) {
     if (new URL(request.url).pathname === VENUE_PATH) return env.VENUE.getByName(VENUE_NAME).fetch(request);
-    return handler.fetch(request, env, ctx);
+    return handler.fetch(request); // ServerEntry.fetch は (request, opts?) で、env を渡すと opts と取り違える
   },
-};
+} satisfies ExportedHandler<Env>;
 ```
 
 - 会場への入口は Start の request scope の外で処理する。101 の応答が Start の応答加工を通らず、`cloudflare:workers` の import も要らない。
