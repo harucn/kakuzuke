@@ -3,13 +3,14 @@ import { preload } from "react-dom";
 import { boundsOf, type Position } from "../deck/cursor.ts";
 import type { HostQuestionSet } from "../question-set/model.ts";
 import { OptionCard } from "../ui/OptionCard.tsx";
+import type { RevealedOption } from "../venue/protocol.ts";
+import { revealView } from "../venue/view.ts";
 import { Celebration } from "./Celebration.tsx";
 import { toggleFullscreen, useIsFullscreen } from "./fullscreen.ts";
 import { installHostKeys } from "./keymap.ts";
 import { initialHostState, positionOf, step, type HostEvent, type HostState, type ShownState } from "./machine.ts";
 import { QrCode } from "./QrCode.tsx";
 import { loadIndex, savePosition } from "./restore.ts";
-import { revealView, type RevealedOption } from "./reveal.ts";
 
 export function HostScreen({ set }: { readonly set: HostQuestionSet }) {
   const total = set.questions.length;

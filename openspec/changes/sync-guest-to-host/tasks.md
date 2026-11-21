@@ -12,7 +12,7 @@
   - `package.json` に `typecheck` を足す。中身は今の段階では `tsc --noEmit` である。
   - `.github/workflows/ci.yml` で `pnpm typecheck` を流す。
   - 検証: `pnpm typecheck && pnpm test` が通る
-- [ ] 1.2 `src/venue/` に純粋な部品を書く（Decisions 1・3）。司会画面と参加者画面にはまだ触れない。
+- [x] 1.2 `src/venue/` に純粋な部品を書く（Decisions 1・3）。司会画面と参加者画面にはまだ触れない。
   - `src/venue/machine.ts`: `src/host/machine.ts` を複製し、`booting`・`restore` を抜いて `VenueState`・`step`・`positionOf` にする。司会側の `src/host/machine.ts` は残す。
   - `src/venue/protocol.ts`: `Intent`・`VenueView`・`ServerFrame` の zod スキーマ、`PING`・`PONG`、`parseIntent`・`parseServerFrame`・`venueUrl` を書く。
   - `src/venue/view.ts`: `src/host/reveal.ts` を移し、`viewOf` を足す。`src/host/reveal.ts` を import している `HostScreen.tsx`・`tests/unit/reveal.test.ts`・`tests/e2e/content.spec.ts` の import も直す。

@@ -3,7 +3,7 @@ import path from "node:path";
 import { expect, test, type Page, type Response } from "@playwright/test";
 import { parse as parseYaml } from "yaml";
 import { LEAK_CANARY } from "../../src/guest/leak-canary.ts";
-import { revealView } from "../../src/host/reveal.ts";
+import { revealView } from "../../src/venue/view.ts";
 import { secretStrings, type Label } from "../../src/question-set/model.ts";
 import { loadQuestionSet } from "../../src/question-set/vite-plugin.ts";
 import { findSecrets } from "../leak.ts";

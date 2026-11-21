@@ -89,6 +89,11 @@ function compile(files: ContentFiles): Compiled {
   return { ok: true, set: result.set, published };
 }
 
+/** 問題セットの版。JSON の SHA-256 なので、どの項目を変えても変わる */
+export function versionOf(value: unknown): string {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
 /** テストが実データを読む唯一の入口。プラグインと同じ場所・同じ検証を使う */
 export function loadQuestionSet(root: string, options: KakuzukeOptions = {}): QuestionSet {
   const compiled = compile(locate(root, options));
@@ -106,7 +111,8 @@ export function kakuzukeQuestions(options: KakuzukeOptions = {}): Plugin {
   function moduleOf(project: (set: QuestionSet) => unknown): string {
     const c = current();
     if (!c.ok) throw new Error(c.message);
-    return `export default ${JSON.stringify(project(c.set))};`;
+    const value = project(c.set);
+    return `export default ${JSON.stringify(value)};\nexport const version = ${JSON.stringify(versionOf(value))};`;
   }
 
   return {

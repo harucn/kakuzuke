@@ -84,7 +84,7 @@ async function publicData(): Promise<PublicQuestionSet> {
   if (typeof id !== "string") throw new Error(`virtual:kakuzuke/public が解決されません（${String(id)}）`);
   const loaded = await handlerOf(plugin.load).call(context as never, id);
   if (typeof loaded !== "string") throw new Error("virtual:kakuzuke/public の load が文字列を返しません");
-  const json = /^export default (.*);$/s.exec(loaded)?.[1];
+  const json = /^export default (.*);$/m.exec(loaded)?.[1];
   if (json === undefined) throw new Error(`export default の形ではありません: ${loaded.slice(0, 80)}`);
   return JSON.parse(json) as PublicQuestionSet;
 }

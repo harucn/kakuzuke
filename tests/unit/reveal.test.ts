@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { initialHostState, step } from "../../src/host/machine.ts";
-import { revealView } from "../../src/host/reveal.ts";
+import { revealView } from "../../src/venue/view.ts";
 import type { Question } from "../../src/question-set/model.ts";
 import { imageUrl } from "./fixtures.ts";
 
