@@ -3,9 +3,17 @@
   "name": "kakuzuke",
   "compatibility_date": "2026-11-16",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "@tanstack/react-start/server-entry",
+  "main": "./src/server.ts",
   "assets": {
     "html_handling": "drop-trailing-slash"
   },
-  "previews": {}
+  "durable_objects": {
+    "bindings": [{ "name": "VENUE", "class_name": "Venue" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Venue"] }],
+  "previews": {
+    "durable_objects": {
+      "bindings": [{ "name": "VENUE", "class_name": "Venue" }]
+    }
+  }
 }

@@ -8,6 +8,9 @@ import { secretStrings, type Label } from "../../src/question-set/model.ts";
 import { loadQuestionSet } from "../../src/question-set/vite-plugin.ts";
 import { findSecrets } from "../leak.ts";
 import { expectNoLabels, expectOptions, optionCard, photoBoxes } from "./options.ts";
+import { freshVenue } from "./venue.ts";
+
+test.beforeEach(freshVenue);
 
 // 期待値はローカルの問題ファイルから作る。BASE_URL でデプロイ先に流すときは、デプロイしたものと同じ content であること
 const root = path.resolve(import.meta.dirname, "../..");

@@ -1,6 +1,9 @@
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 import { loadQuestionSet } from "../../src/question-set/vite-plugin.ts";
+import { freshVenue } from "./venue.ts";
+
+test.beforeEach(freshVenue);
 
 for (const [path, text] of [
   ["/", `aria-label="参加者画面"`],

@@ -6,6 +6,9 @@ import { STORAGE_KEY } from "../../src/host/restore.ts";
 import { answerOf, secretStrings, type Answer, type Label } from "../../src/question-set/model.ts";
 import { loadQuestionSet } from "../../src/question-set/vite-plugin.ts";
 import { expectNoLabels, expectOptions, labelTraces, optionCard, photoBoxes } from "./options.ts";
+import { freshVenue } from "./venue.ts";
+
+test.beforeEach(freshVenue);
 
 // package.json の e2e がこのフィクスチャでビルドした dist に対して流す
 const set = loadQuestionSet(path.resolve(import.meta.dirname, "../.."), { contentDir: "tests/fixtures/content" });

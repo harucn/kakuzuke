@@ -26,7 +26,7 @@
 
 ## 2. Durable Object と入口
 
-- [ ] 2.1 `src/venue/durable-object.ts` に `Venue` を、`src/server.ts` に入口を書き、`wrangler.jsonc` を変える（Decisions 2・6）。
+- [x] 2.1 `src/venue/durable-object.ts` に `Venue` を、`src/server.ts` に入口を書き、`wrangler.jsonc` を変える（Decisions 2・6）。
   - `wrangler.jsonc`: `main` を `./src/server.ts` にする。binding `VENUE`、migration v1 の `new_sqlite_classes: ["Venue"]`、`previews.durable_objects.bindings` を足す。
   - `wrangler types` で生成した `worker-configuration.d.ts` をコミットし、`pnpm typecheck` がサーバー側の型も検査するようにする。
   - `tests/e2e/venue.ts` に、Decision 7 のとおりの `resetVenue` と、Node の WebSocket で会場につなぐヘルパーを書く。
