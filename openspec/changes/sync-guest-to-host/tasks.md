@@ -8,7 +8,7 @@
 
 ## 1. 会場の純粋な部品
 
-- [ ] 1.1 型検査の口をそろえる（Decision 6）。
+- [x] 1.1 型検査の口をそろえる（Decision 6）。
   - `package.json` に `typecheck` を足す。中身は今の段階では `tsc --noEmit` である。
   - `.github/workflows/ci.yml` で `pnpm typecheck` を流す。
   - 検証: `pnpm typecheck && pnpm test` が通る
