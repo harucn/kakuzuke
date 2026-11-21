@@ -1,26 +1,23 @@
-import { useEffect, useReducer, useRef, type Dispatch } from "react";
+import { useEffect, useRef } from "react";
 import { preload } from "react-dom";
 import { boundsOf, type Position } from "../deck/cursor.ts";
-import type { HostQuestionSet } from "../question-set/model.ts";
+import type { PublicQuestionSet } from "../question-set/model.ts";
+import { Celebration } from "../ui/Celebration.tsx";
 import { OptionCard } from "../ui/OptionCard.tsx";
-import { Celebration } from "./Celebration.tsx";
+import { RevealedCard } from "../ui/RevealedCard.tsx";
+import { positionOf } from "../venue/machine.ts";
+import type { Intent, VenueView } from "../venue/protocol.ts";
+import { useVenue } from "../venue/useVenue.ts";
 import { toggleFullscreen, useIsFullscreen } from "./fullscreen.ts";
 import { installHostKeys } from "./keymap.ts";
-import { initialHostState, positionOf, step, type HostEvent, type HostState, type ShownState } from "./machine.ts";
 import { QrCode } from "./QrCode.tsx";
-import { loadIndex, savePosition } from "./restore.ts";
-import { revealView, type RevealedOption } from "./reveal.ts";
 
-export function HostScreen({ set }: { readonly set: HostQuestionSet }) {
-  const total = set.questions.length;
-  const [state, dispatch] = useReducer((s: HostState, e: HostEvent) => step(s, e, total), initialHostState);
-  useEffect(() => installHostKeys(window, dispatch), []);
-  useEffect(() => dispatch({ type: "restore", index: loadIndex(total) }), [total]);
-  // booting の間は保存も削除もしない。復元する前に保存値を消さないため
-  const position = state.phase === "booting" ? null : positionOf(state);
-  useEffect(() => {
-    if (position !== null) savePosition(position);
-  }, [position]);
+type Operate = ((intent: Intent) => void) | null;
+
+export function HostScreen({ set }: { readonly set: PublicQuestionSet }) {
+  const { view, connection, celebration, operate } = useVenue("host");
+  useEffect(() => installHostKeys(window, (intent) => operate?.(intent)), [operate]);
+  const position = view === null ? null : positionOf(view);
   const upcoming = position === null ? null : position === "title" ? 0 : position + 1;
   for (const option of upcoming === null ? [] : (set.questions[upcoming]?.options ?? [])) preload(option.image, { as: "image" });
   // 全画面にするのは枠ではなくページ全体。枠の 16:9 の寸法計算をそのまま使えて、画面の比が 16:9 でなくても崩れない
@@ -29,27 +26,32 @@ export function HostScreen({ set }: { readonly set: HostQuestionSet }) {
 
   return (
     <main ref={stage} className="host-stage" aria-label="司会画面">
-      <div className={`host${state.phase === "title" ? " host--title" : ""}`}>
-        {state.phase === "title" ? (
-          <TitleStage set={set} dispatch={dispatch} onFullscreen={onFullscreen} />
-        ) : (
-          state.phase !== "booting" && <Stage set={set} state={state} dispatch={dispatch} onFullscreen={onFullscreen} />
-        )}
-      </div>
+      <p role="status" className="venue-status">
+        {connection === "lost" ? "再接続中" : null}
+      </p>
+      {view !== null && (
+        <div className={`host${view.phase === "title" ? " host--title" : ""}`}>
+          {view.phase === "title" ? (
+            <TitleStage set={set} operate={operate} onFullscreen={onFullscreen} />
+          ) : (
+            <Stage set={set} view={view} celebration={celebration} operate={operate} onFullscreen={onFullscreen} />
+          )}
+        </div>
+      )}
     </main>
   );
 }
 
 function TitleStage({
   set,
-  dispatch,
+  operate,
   onFullscreen,
 }: {
-  readonly set: HostQuestionSet;
-  readonly dispatch: Dispatch<HostEvent>;
+  readonly set: PublicQuestionSet;
+  readonly operate: Operate;
   readonly onFullscreen: () => void;
 }) {
-  // booting の間は描画しないので、ここは必ずクライアントで動く。origin は本番とプレビューで違うのでビルド時には決められない
+  // 会場の状態は接続後にしか届かないので、ここは必ずクライアントで動く。origin は本番とプレビューで違うのでビルド時には決められない
   const guestUrl = new URL("/", window.location.origin).href;
   return (
     <>
@@ -60,7 +62,7 @@ function TitleStage({
         <QrCode value={guestUrl} label="参加者画面の QR コード" />
       </div>
       <div className="host-foot host-foot--title">
-        <Controls position="title" total={set.questions.length} dispatch={dispatch} onFullscreen={onFullscreen} />
+        <Controls position="title" total={set.questions.length} operate={operate} onFullscreen={onFullscreen} />
       </div>
     </>
   );
@@ -68,24 +70,22 @@ function TitleStage({
 
 function Stage({
   set,
-  state,
-  dispatch,
+  view,
+  celebration,
+  operate,
   onFullscreen,
 }: {
-  readonly set: HostQuestionSet;
-  readonly state: Exclude<ShownState, { readonly phase: "title" }>;
-  readonly dispatch: Dispatch<HostEvent>;
+  readonly set: PublicQuestionSet;
+  readonly view: Exclude<VenueView, { readonly phase: "title" }>;
+  readonly celebration: string | null;
+  readonly operate: Operate;
   readonly onFullscreen: () => void;
 }) {
-  const { index } = state;
+  const { index } = view;
   const { questions } = set;
   const question = questions[index];
-
-  const revealed = state.phase === "revealed" ? { view: revealView(question), run: state.run } : null;
-  const message =
-    revealed === null
-      ? { who: "Q.", text: question.description }
-      : { who: `${revealed.view.headline}！`, text: revealed.view.explanation };
+  const reveal = view.phase === "revealed" ? view.reveal : null;
+  const message = reveal === null ? { who: "Q.", text: question.description } : { who: `${reveal.headline}！`, text: reveal.explanation };
 
   return (
     <>
@@ -94,82 +94,57 @@ function Stage({
         {question.title}
       </h1>
       <div className="host-opts">
-        {question.options.map((o, i) => {
-          if (revealed === null) return <OptionCard key={i} size="host" image={o.image} note={o.note} />;
-          const shown = revealed.view.options.find((r) => r.label === o.label)!;
-          // pick は外れを薄くする。order は全選択肢の順位を読ませたいので薄くしない
-          const tone = shown.correct ? "correct" : question.mode === "pick" ? "dim" : undefined;
-          return (
-            <OptionCard key={i} size="host" image={o.image} note={o.note} label={o.label} tone={tone}>
-              <Tag option={shown} />
-              {shown.correct && <Stamp key={revealed.run} />}
-            </OptionCard>
-          );
-        })}
+        {question.options.map((o, i) =>
+          reveal === null ? (
+            <OptionCard key={i} size="host" image={o.image} note={o.note} />
+          ) : (
+            <RevealedCard key={i} size="host" option={o} revealed={reveal.options[i]} mode={question.mode} celebration={celebration} />
+          ),
+        )}
       </div>
       <div className="host-foot">
         <div className="msg px" aria-live="polite">
           <span className="who">{message.who}</span>
-          <Typed key={`${index}:${state.phase}`} text={message.text} />
+          <Typed key={`${index}:${view.phase}`} text={message.text} />
           <span className="caret" aria-hidden="true" />
         </div>
-        <Controls position={index} total={questions.length} dispatch={dispatch} onFullscreen={onFullscreen} />
+        <Controls position={index} total={questions.length} operate={operate} onFullscreen={onFullscreen} />
       </div>
-      {revealed !== null && <Celebration key={revealed.run} />}
+      {celebration !== null && <Celebration key={celebration} />}
     </>
   );
 }
 
-/** タイトル画面には正解発表ボタンを出さない（状態機械もタイトル画面の正解発表を無視する） */
+/** タイトル画面には正解発表ボタンを出さない（状態機械もタイトル画面の正解発表を無視する）。会場につながっていない間は全画面以外を押せない */
 function Controls({
   position,
   total,
-  dispatch,
+  operate,
   onFullscreen,
 }: {
   readonly position: Position;
   readonly total: number;
-  readonly dispatch: Dispatch<HostEvent>;
+  readonly operate: Operate;
   readonly onFullscreen: () => void;
 }) {
   const fullscreen = useIsFullscreen();
   const { canPrev, canNext } = boundsOf(position, total);
   return (
     <div className="host-btns">
-      <button type="button" className="btn px" aria-label="前へ" disabled={!canPrev} onClick={() => dispatch({ type: "prev" })}>
+      <button type="button" className="btn px" aria-label="前へ" disabled={operate === null || !canPrev} onClick={() => operate?.({ type: "prev" })}>
         ◀
       </button>
       {position !== "title" && (
-        <button type="button" className="btn btn-go px" onClick={() => dispatch({ type: "reveal" })}>
+        <button type="button" className="btn btn-go px" disabled={operate === null} onClick={() => operate?.({ type: "reveal" })}>
           正解発表
         </button>
       )}
-      <button type="button" className="btn px" aria-label="次へ" disabled={!canNext} onClick={() => dispatch({ type: "next" })}>
+      <button type="button" className="btn px" aria-label="次へ" disabled={operate === null || !canNext} onClick={() => operate?.({ type: "next" })}>
         ▶
       </button>
       <button type="button" className="btn btn-sq px" aria-label="全画面" aria-pressed={fullscreen} onClick={onFullscreen}>
         ⛶
       </button>
-    </div>
-  );
-}
-
-function Tag({ option }: { readonly option: RevealedOption }) {
-  return (
-    <div className="tag">
-      {option.rank !== null && <b>{option.rank}位</b>}
-      {option.name}
-      <br />
-      {option.price}
-    </div>
-  );
-}
-
-/** 点滅は CSS（reduced motion では止まる）。key={run} で作り直すと最初から点滅する */
-function Stamp() {
-  return (
-    <div className="stamp" data-testid="stamp">
-      正解！
     </div>
   );
 }

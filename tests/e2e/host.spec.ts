@@ -2,10 +2,15 @@ import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import jsQR from "jsqr";
 import { PNG } from "pngjs";
-import { STORAGE_KEY } from "../../src/host/restore.ts";
 import { answerOf, secretStrings, type Answer, type Label } from "../../src/question-set/model.ts";
 import { loadQuestionSet } from "../../src/question-set/vite-plugin.ts";
 import { expectNoLabels, expectOptions, labelTraces, optionCard, photoBoxes } from "./options.ts";
+import { connectVenue, relayVenue, resetVenue, skipIfRemote } from "./venue.ts";
+
+test.beforeEach(async ({ baseURL }) => {
+  skipIfRemote();
+  await resetVenue(baseURL!);
+});
 
 // package.json の e2e がこのフィクスチャでビルドした dist に対して流す
 const set = loadQuestionSet(path.resolve(import.meta.dirname, "../.."), { contentDir: "tests/fixtures/content" });
@@ -23,6 +28,7 @@ const qrCode = (page: Page) => page.getByRole("img", { name: "参加者画面の
 /** テストが開いているサーバーの参加者画面 */
 const guestUrl = (page: Page) => new URL("/", page.url()).href;
 const celebration = (page: Page) => page.getByTestId("celebration");
+const status = (page: Page) => page.getByRole("status");
 const PICK = 0;
 const ORDER = 1;
 
@@ -88,8 +94,8 @@ async function goTo(page: Page, index: number) {
   }
 }
 
-test.describe("タイトル画面", () => {
-  test("新しいタブで開いた直後はタイトル画面を表示する", async ({ browser }) => {
+test.describe("タイトル画面と QR コード", () => {
+  test("会場がタイトル画面のときに開くとタイトル画面を表示する", async ({ browser }) => {
     const context = await browser.newContext({ baseURL: test.info().project.use.baseURL });
     const page = await context.newPage();
     await openTitle(page);
@@ -199,7 +205,7 @@ test.describe("前後の画面への移動", () => {
   });
 });
 
-test.describe("再読み込みで同じ問題に戻る", () => {
+test.describe("会場の進行状態を表示する", () => {
   test("タイトル画面で再読み込みするとタイトル画面のまま", async ({ page }) => {
     await openHost(page);
     await prevButton(page).click();
@@ -215,21 +221,82 @@ test.describe("再読み込みで同じ問題に戻る", () => {
     await expectAsking(page, 2);
   });
 
-  test("正解発表後に再読み込みすると発表前の状態に戻る", async ({ page }) => {
-    await openHost(page);
-    await goTo(page, 1);
-    await revealButton(page).click();
-    await expect(page.getByText(questions[1].explanation)).toBeVisible();
+  test("正解発表後に再読み込みすると正解発表を表示する", async ({ page }) => {
+    await revealAt(page, ORDER);
     await page.reload();
-    await expectAsking(page, 1);
+    await expectRevealed(page, ORDER);
   });
 
-  test("問題数が減った後の再読み込みでは範囲内の問題を表示する", async ({ page }) => {
+  test("新しいタブで開くと会場の今の状態を表示する", async ({ page, context }) => {
     await openHost(page);
-    // 問題数が減ったセットのデプロイは、保存された位置が今の問題数を超えている状態として作る
-    await page.evaluate((key) => sessionStorage.setItem(key, "99"), STORAGE_KEY);
+    await goTo(page, 1);
+    const tab = await context.newPage();
+    await tab.goto("/host");
+    await expectAsking(tab, 1);
+  });
+
+  test("2 つの司会画面は同じ状態を表示する", async ({ page, context }) => {
+    const other = await context.newPage();
+    await openTitle(page);
+    await openTitle(other);
+    await nextButton(page).click();
+    await expectAsking(page, 0);
+    await expectAsking(other, 0);
+  });
+});
+
+test.describe("つないだ直後は演出を再生しない", () => {
+  test("正解発表中に再読み込みしても演出を再生しない", async ({ page }) => {
+    await revealAt(page, ORDER);
+    // 陽性対照: 操作した直後は同じ検査が演出を見つける
+    await expect(celebration(page)).toHaveCount(1);
+    expect(await stamp(page).evaluate((el) => getComputedStyle(el).animationName)).not.toBe("none");
     await page.reload();
-    await expectAsking(page, last);
+    await expectRevealed(page, ORDER);
+    await expect(celebration(page)).toHaveCount(0);
+    expect(await stamp(page).evaluate((el) => getComputedStyle(el).animationName)).toBe("none");
+  });
+});
+
+test.describe("接続が切れている間の表示と操作", () => {
+  test("接続が切れると再接続中と表示する", async ({ page }) => {
+    const relay = await relayVenue(page);
+    await openHost(page);
+    await expect(status(page)).toBeEmpty();
+    await relay.cut();
+    await expect(status(page)).toHaveText("再接続中");
+    for (const button of [prevButton, revealButton, nextButton]) await expect(button(page)).toBeDisabled();
+    await expectQuestion(page, 0);
+  });
+
+  test("最初につながらないときは再接続中と表示する", async ({ page }) => {
+    await page.routeWebSocket(/\/api\/venue/, () => {});
+    await page.goto("/host");
+    await expect(page.getByRole("main", { name: "司会画面" })).toBeVisible();
+    await expect(status(page), "最初の 5 秒は再接続中と出さない").toBeEmpty();
+    await expect(status(page)).toHaveText("再接続中", { timeout: 10_000 });
+    await expect(page.getByRole("heading")).toHaveCount(0);
+  });
+
+  test("接続が切れている間のキー操作は捨てる", async ({ page, baseURL }) => {
+    const relay = await relayVenue(page);
+    await openHost(page);
+    await relay.cut();
+    await expect(status(page)).toHaveText("再接続中");
+    await page.keyboard.press("ArrowRight");
+    relay.resume();
+    await expect(status(page)).toBeEmpty({ timeout: 15_000 });
+    await expect(nextButton(page)).toBeEnabled();
+    await expectAsking(page, 0);
+    const observer = connectVenue(baseURL!, "guest");
+    try {
+      expect((await observer.next()).view, "会場の進行状態").toEqual({ phase: "asking", index: 0 });
+    } finally {
+      observer.close();
+    }
+    // 陽性対照: つながっていれば同じキーで進む
+    await page.keyboard.press("ArrowRight");
+    await expectAsking(page, 1);
   });
 });
 
@@ -357,6 +424,20 @@ async function expectStampOnlyOn(page: Page, index: number, winner: Label) {
   }
 }
 
+/** 第 index + 1 問の正解発表（正解の並び・解説・全選択肢の順位と銘柄と価格・正解の印）が表示されている */
+async function expectRevealed(page: Page, index: number) {
+  const answer = answerOf(questions[index]);
+  const order = answer.mode === "pick" ? [answer.winner] : answer.sequence;
+  await expect(page.getByText(`正解は ${order.join(" → ")}`)).toBeVisible();
+  await expect(page.getByText(questions[index].explanation)).toBeVisible();
+  for (const o of questions[index].options) {
+    if (answer.mode === "order") await expect(card(page, o.label)).toContainText(`${o.rank}位`);
+    await expect(card(page, o.label)).toContainText(o.name);
+    await expect(card(page, o.label)).toContainText(o.price);
+  }
+  await expectStampOnlyOn(page, index, order[0]);
+}
+
 /** 紙吹雪の canvas に色の付いたドットがある */
 function celebrationHasDots(page: Page) {
   return celebration(page).evaluate((canvas: HTMLCanvasElement) => {
@@ -441,6 +522,22 @@ test.describe("order の正解発表", () => {
     await expect(page.getByText(`正解は ${sequence.join(" → ")}`)).toBeVisible();
     await expect(page.getByText(q.explanation)).toBeVisible();
   });
+});
+
+test("正解発表の各カードの銘柄は同じ位置の写真の銘柄である", async ({ page }) => {
+  await openHost(page);
+  for (const [index, q] of questions.entries()) {
+    if (index > 0) {
+      await nextButton(page).click();
+      await expectAsking(page, index);
+    }
+    await revealButton(page).click();
+    await expect(stamp(page)).toBeVisible();
+    const nameOf = new Map<string, string>(q.options.map((o) => [o.image, o.name]));
+    for (const [i, photo] of (await photoBoxes(page)).entries()) {
+      await expect(optionCard(page, i).locator(".tag"), `第 ${index + 1} 問の ${i + 1} 番目`).toContainText(nameOf.get(photo.src!)!);
+    }
+  }
 });
 
 test.describe("正解発表の再演出", () => {

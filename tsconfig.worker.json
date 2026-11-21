@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["worker-configuration.d.ts", "src/virtual-kakuzuke.d.ts", "src/server.ts", "src/venue/durable-object.ts", "src/venue/room.ts", "tests/unit/venue-do.test.ts"],
+  "exclude": [],
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": []
+  }
+}

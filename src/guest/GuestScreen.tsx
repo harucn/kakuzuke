@@ -1,48 +1,39 @@
-import { useState, useSyncExternalStore } from "react";
+import { useEffect } from "react";
 import { preload } from "react-dom";
-import { boundsOf, move, type Position, type Step } from "../deck/cursor.ts";
 import type { PublicQuestionSet } from "../question-set/model.ts";
+import { Celebration } from "../ui/Celebration.tsx";
 import { OptionCard } from "../ui/OptionCard.tsx";
+import { RevealedCard } from "../ui/RevealedCard.tsx";
+import type { VenueView } from "../venue/protocol.ts";
+import { useVenue } from "../venue/useVenue.ts";
 import { LEAK_CANARY } from "./leak-canary.ts";
 
-const subscribeNothing = () => () => {};
-
-/** 事前レンダリングの HTML と hydration 中は false。押しても動かないボタンを押せる見た目で出さないために使う */
-function useHydrated(): boolean {
-  return useSyncExternalStore(
-    subscribeNothing,
-    () => true,
-    () => false,
-  );
-}
+type QuestionPhase = Exclude<VenueView, { readonly phase: "title" }>;
 
 export function GuestScreen({ set }: { readonly set: PublicQuestionSet }) {
-  const [position, setPosition] = useState<Position>("title");
-  const hydrated = useHydrated();
-  const { questions } = set;
-  const upcoming = position === "title" ? 0 : position + 1;
-  for (const option of questions[upcoming]?.options ?? []) preload(option.image, { as: "image" });
+  const { view, connection, celebration } = useVenue("guest");
+  // 届いた問題番号が手元の問題セットにないときもタイトル画面にする
+  const shown: QuestionPhase | null = view !== null && view.phase !== "title" && set.questions[view.index] !== undefined ? view : null;
+  const index = shown?.index ?? null;
+  const upcoming = index === null ? 0 : index + 1;
+  for (const option of set.questions[upcoming]?.options ?? []) preload(option.image, { as: "image" });
 
-  const go = (step: Step) => {
-    setPosition(move(position, step, questions.length));
+  // 正解発表では写真の位置を動かさないよう、問題が変わったときだけ戻す。scrollTo は Promise を返すブラウザがあるので、片付け関数と取り違えないよう値を返さない
+  useEffect(() => {
     window.scrollTo(0, 0);
-  };
+  }, [index]);
 
   return (
     <main className="guest" aria-label="参加者画面" data-leak-canary={LEAK_CANARY}>
-      {position === "title" ? (
-        <>
-          <div className="guest-cover">
-            <h1 className="guest-cover__title">{set.title}</h1>
-          </div>
-          <nav className="guest-nav guest-nav--start" aria-label="問題の移動">
-            <button type="button" className="btn btn-go px" disabled={!hydrated} onClick={() => go(1)}>
-              はじめる<span aria-hidden="true"> ▶</span>
-            </button>
-          </nav>
-        </>
+      <p role="status" className="venue-status">
+        {connection === "lost" ? "再接続中" : null}
+      </p>
+      {shown === null ? (
+        <div className="guest-cover">
+          <h1 className="guest-cover__title">{set.title}</h1>
+        </div>
       ) : (
-        <QuestionView set={set} index={position} hydrated={hydrated} go={go} />
+        <QuestionView set={set} view={shown} celebration={celebration} />
       )}
     </main>
   );
@@ -50,18 +41,16 @@ export function GuestScreen({ set }: { readonly set: PublicQuestionSet }) {
 
 function QuestionView({
   set,
-  index,
-  hydrated,
-  go,
+  view,
+  celebration,
 }: {
   readonly set: PublicQuestionSet;
-  readonly index: number;
-  readonly hydrated: boolean;
-  readonly go: (step: Step) => void;
+  readonly view: QuestionPhase;
+  readonly celebration: string | null;
 }) {
-  const { questions } = set;
-  const question = questions[index];
-  const { canPrev, canNext } = boundsOf(index, questions.length);
+  const { index } = view;
+  const question = set.questions[index];
+  const reveal = view.phase === "revealed" ? view.reveal : null;
   return (
     <>
       <h1 className="guest-title">
@@ -70,18 +59,21 @@ function QuestionView({
       </h1>
       <p className="guest-desc">{question.description}</p>
       <div className="guest-opts">
-        {question.options.map((o, i) => (
-          <OptionCard key={i} image={o.image} note={o.note} />
-        ))}
+        {question.options.map((o, i) =>
+          reveal === null ? (
+            <OptionCard key={i} image={o.image} note={o.note} />
+          ) : (
+            <RevealedCard key={i} size="guest" option={o} revealed={reveal.options[i]} mode={question.mode} celebration={celebration} />
+          ),
+        )}
       </div>
-      <nav className="guest-nav" aria-label="問題の移動">
-        <button type="button" className="btn px" disabled={!hydrated || !canPrev} onClick={() => go(-1)}>
-          <span aria-hidden="true">◀ </span>前へ
-        </button>
-        <button type="button" className="btn px" disabled={!hydrated || !canNext} onClick={() => go(1)}>
-          次へ<span aria-hidden="true"> ▶</span>
-        </button>
-      </nav>
+      {reveal !== null && (
+        <div className="guest-reveal px">
+          <p className="guest-reveal__headline">{reveal.headline}！</p>
+          <p className="guest-reveal__text">{reveal.explanation}</p>
+        </div>
+      )}
+      {celebration !== null && <Celebration key={celebration} />}
     </>
   );
 }

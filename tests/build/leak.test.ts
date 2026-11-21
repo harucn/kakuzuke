@@ -17,8 +17,6 @@ import { findSecrets } from "../leak";
 
 const root = path.resolve(import.meta.dirname, "../..");
 const clientDir = path.join(root, "dist/client");
-/** 正解を含んでよい唯一のクライアント向けファイル */
-const HOST_HTML = "host/index.html";
 const BINARY_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif", ".ico", ".woff", ".woff2", ".ttf", ".otf"]);
 
 interface ClientFile {
@@ -84,7 +82,7 @@ async function publicData(): Promise<PublicQuestionSet> {
   if (typeof id !== "string") throw new Error(`virtual:kakuzuke/public が解決されません（${String(id)}）`);
   const loaded = await handlerOf(plugin.load).call(context as never, id);
   if (typeof loaded !== "string") throw new Error("virtual:kakuzuke/public の load が文字列を返しません");
-  const json = /^export default (.*);$/s.exec(loaded)?.[1];
+  const json = /^export default (.*);$/m.exec(loaded)?.[1];
   if (json === undefined) throw new Error(`export default の形ではありません: ${loaded.slice(0, 80)}`);
   return JSON.parse(json) as PublicQuestionSet;
 }
@@ -95,11 +93,6 @@ describe("参加者に届くデータに正解情報を含めない", () => {
     expect(secrets.length).toBeGreaterThan(0);
     expect(secrets).toHaveLength(expected.size);
     expect(new Set(secrets)).toEqual(expected);
-  });
-
-  it("陽性対照: host/index.html から全秘密文字列が見つかる", () => {
-    const found = new Set(findSecrets(textOf(HOST_HTML), secrets).map((hit) => hit.secret));
-    expect(secrets.filter((secret) => !found.has(secret)), "host/index.html に見つからない秘密文字列").toEqual([]);
   });
 
   it("陽性対照: クライアント JS から LEAK_CANARY が見つかる", () => {
@@ -114,17 +107,17 @@ describe("参加者に届くデータに正解情報を含めない", () => {
     expect(found, "dist/client/index.html から LEAK_CANARY が見つからない").toBe(true);
   });
 
-  it("本検査: host/index.html 以外のどのファイルにも秘密文字列がない", () => {
+  // 秘密文字列を実際に見つけられることは、viewOf の単体テストの陽性対照で確かめている
+  it("本検査: どのファイルにも秘密文字列がない", () => {
     expect(files.length).toBeGreaterThan(0);
-    const leaks = files.filter((f) => f.path !== HOST_HTML).flatMap((f) => leaksIn(f, secrets));
+    const leaks = files.flatMap((f) => leaksIn(f, secrets));
     expect(leaks, "参加者に届くファイルに秘密文字列がある").toEqual([]);
   });
 
   it("本検査: 写真の元のファイル名がどのファイルの中身とパスにもない", () => {
     expect(imageNames.length).toBeGreaterThan(0);
     const baseNames = imageNames.map((name) => path.basename(name, path.extname(name)));
-    // 司会画面の HTML には銘柄が入るので、拡張子を除く部分で探すと「ボルドー」が「ボルドーの赤」に誤って一致する
-    const leaks = files.flatMap((f) => leaksIn(f, f.path === HOST_HTML ? imageNames : baseNames));
+    const leaks = files.flatMap((f) => leaksIn(f, baseNames));
     expect(leaks, "写真の元のファイル名が dist/client に現れる").toEqual([]);
   });
 
