@@ -44,7 +44,7 @@
     - 「すべての画面を閉じても状態が残る」
     - 「次へが 2 つの参加者画面に届く」の会場側（2 本の guest ソケットに `operated` が 1 秒以内に届く）
   - 検証: `pnpm typecheck && pnpm test && pnpm e2e && pnpm build` が通り、`pnpm exec playwright test --project=scenario --list` に `venue.spec.ts` が出る
-- [ ] 2.2 実際のプレビューのデプロイで、DO が動くかを確かめる（Risks の「プレビュー版と DO」）。
+- [x] 2.2 実際のプレビューのデプロイで、DO が動くかを確かめる（Risks の「プレビュー版と DO」）。
   - `pnpm run deploy:preview` を流し、プレビューの URL の `/api/venue` に司会として WebSocket でつないで、次を確かめる。
     - `joined` が届く。
     - 操作するとプレビューの会場だけが変わり、本番の会場は変わらない。
