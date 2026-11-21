@@ -1,11 +1,11 @@
 import path from "node:path";
-import { expect, test, type Page, type WebSocketRoute } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import jsQR from "jsqr";
 import { PNG } from "pngjs";
 import { answerOf, secretStrings, type Answer, type Label } from "../../src/question-set/model.ts";
 import { loadQuestionSet } from "../../src/question-set/vite-plugin.ts";
 import { expectNoLabels, expectOptions, labelTraces, optionCard, photoBoxes } from "./options.ts";
-import { connectVenue, resetVenue, skipIfRemote } from "./venue.ts";
+import { connectVenue, relayVenue, resetVenue, skipIfRemote } from "./venue.ts";
 
 test.beforeEach(async ({ baseURL }) => {
   skipIfRemote();
@@ -257,27 +257,6 @@ test.describe("つないだ直後は演出を再生しない", () => {
     expect(await stamp(page).evaluate((el) => getComputedStyle(el).animationName)).toBe("none");
   });
 });
-
-/** 会場への接続を中継する。cut でサーバー側から切り、resume まではつなぎ直しを受けたまま会場へ通さない */
-async function relayVenue(page: Page) {
-  let holding = false;
-  const servers: WebSocketRoute[] = [];
-  const held: WebSocketRoute[] = [];
-  await page.routeWebSocket(/\/api\/venue/, (ws) => {
-    if (holding) held.push(ws);
-    else servers.push(ws.connectToServer());
-  });
-  return {
-    async cut() {
-      holding = true;
-      await Promise.all(servers.splice(0).map((server) => server.close()));
-    },
-    resume() {
-      holding = false;
-      for (const ws of held.splice(0)) servers.push(ws.connectToServer());
-    },
-  };
-}
 
 test.describe("接続が切れている間の表示と操作", () => {
   test("接続が切れると再接続中と表示する", async ({ page }) => {

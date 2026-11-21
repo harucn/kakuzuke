@@ -1,14 +1,15 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { expect, test, type Page, type Response } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { parse as parseYaml } from "yaml";
 import { LEAK_CANARY } from "../../src/guest/leak-canary.ts";
+import { PONG } from "../../src/venue/protocol.ts";
 import { revealView } from "../../src/venue/view.ts";
 import { secretStrings, type Label } from "../../src/question-set/model.ts";
 import { loadQuestionSet } from "../../src/question-set/vite-plugin.ts";
 import { findSecrets } from "../leak.ts";
 import { expectNoLabels, expectOptions, optionCard, photoBoxes } from "./options.ts";
-import { freshVenue, skipIfRemote } from "./venue.ts";
+import { connectHost, freshVenue, operate, recordTraffic, skipIfRemote, TEXT_TYPE, viewShapeProblems } from "./venue.ts";
 
 test.beforeEach(freshVenue);
 
@@ -27,7 +28,6 @@ const imageBaseNames = [
 ];
 
 const SERVER_FN = "/_serverFn/";
-const TEXT_TYPE = /^(text\/|application\/(javascript|json|xml)|application\/[\w.+-]+\+(json|xml)|image\/svg\+xml)/;
 const BINARY_TYPE = /^(image\/|font\/|application\/(font-|x-font-|octet-stream))/;
 
 const nextButton = (page: Page) => page.getByRole("button", { name: "次へ" });
@@ -140,19 +140,13 @@ test.describe("司会画面", () => {
 
   // 会場を動かさないので BASE_URL でも流す。正解は会場からの WebSocket でだけ届き、HTTP の応答には載らない
   test("開いてもサーバー関数を呼ばず、HTTP の応答に正解情報がない", async ({ page }) => {
-    const requests: string[] = [];
-    const bodies: Promise<{ readonly url: string; readonly text: string }>[] = [];
-    page.on("request", (r) => requests.push(r.url()));
-    page.on("response", (r) => {
-      if (r.status() >= 300 && r.status() < 400) return;
-      if (TEXT_TYPE.test(r.headers()["content-type"] ?? "")) bodies.push(r.text().then((text) => ({ url: r.url(), text })));
-    });
+    const traffic = recordTraffic(page);
     await page.goto("/host");
     await expect(page.locator(".host")).toBeVisible();
-    const texts = await Promise.all(bodies);
+    const texts = await traffic.http();
 
     expect(texts.map(({ url }) => new URL(url).pathname), "/host の HTML を検査できている").toContain("/host");
-    expect(requests.filter((url) => url.includes(SERVER_FN))).toEqual([]);
+    expect(traffic.requests.filter((url) => url.includes(SERVER_FN))).toEqual([]);
     const leaks = texts.flatMap(({ url, text }) => findSecrets(text, secrets).map((hit) => `${url}: 「${hit.secret}」 …${hit.context}…`));
     expect(leaks).toEqual([]);
   });
@@ -184,51 +178,61 @@ test.describe("司会画面", () => {
   }
 });
 
-test("参加者画面を最後まで進める間の応答に正解情報がなく、サーバー関数も呼ばない", async ({ page }) => {
-  expect(secrets.length).toBeGreaterThan(0);
-  expect(imageBaseNames.length).toBeGreaterThan(0);
-  const requests: string[] = [];
-  const responses: Response[] = [];
-  const bodies: Promise<{ readonly url: string; readonly text: string }>[] = [];
-  page.on("request", (r) => requests.push(r.url()));
-  page.on("response", (r) => {
-    responses.push(r);
-    const type = r.headers()["content-type"] ?? "";
-    if (r.status() >= 300 && r.status() < 400) return;
-    if (TEXT_TYPE.test(type)) bodies.push(r.text().then((text) => ({ url: r.url(), text })));
+test.describe("参加者画面", () => {
+  // 会場を動かさないので BASE_URL でも流す。HTML と JS に正解情報がない（会場はデプロイ先で正解発表中かもしれないので、フレームは検査しない）
+  test("開いたときの HTTP の応答に正解情報がなく、サーバー関数も呼ばない", async ({ page }) => {
+    const traffic = recordTraffic(page);
+    await page.goto("/");
+    await expect(page.locator(".guest")).toBeVisible();
+    const http = await traffic.http();
+
+    expect(http.map(({ url }) => new URL(url).pathname), "参加者画面の HTML を検査できている").toContain("/");
+    expect(traffic.requests.filter((url) => url.includes(SERVER_FN))).toEqual([]);
+    expect(http.some(({ text }) => findSecrets(text, [LEAK_CANARY]).length > 0), "陽性対照: 応答の中身からカナリアを読める").toBe(true);
+    const leaks = http.flatMap(({ url, text }) => findSecrets(text, secrets).map((hit) => `${url}: 「${hit.secret}」 …${hit.context}…`));
+    expect(leaks).toEqual([]);
   });
 
-  await page.goto("/");
-  const startButton = page.getByRole("button", { name: "はじめる" });
-  await expect(startButton).toBeEnabled();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(set.title);
-  await startButton.click();
-  await expectQuestion(page, 0);
-  for (let i = 1; i <= last; i++) {
-    await nextButton(page).click();
-    await expectQuestion(page, i);
-  }
-  await expect(nextButton(page)).toBeDisabled();
-  const texts = await Promise.all(bodies);
+  test("司会が最後まで進める間の応答とフレームに正解情報がなく、サーバー関数も呼ばない", async ({ page, baseURL }) => {
+    skipIfRemote();
+    expect(secrets.length).toBeGreaterThan(0);
+    expect(imageBaseNames.length).toBeGreaterThan(0);
+    const traffic = recordTraffic(page);
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(set.title);
+    await expect.poll(() => traffic.frames.length, "会場につながった").toBeGreaterThan(0);
+    const host = await connectHost(baseURL!);
+    try {
+      for (let i = 0; i <= last; i++) {
+        await operate(host, "next");
+        await expectQuestion(page, i);
+      }
+    } finally {
+      host.close();
+    }
+    const texts = await traffic.texts();
 
-  expect(requests.filter((url) => url.includes(SERVER_FN))).toEqual([]);
+    expect(traffic.requests.filter((url) => url.includes(SERVER_FN))).toEqual([]);
 
-  const unknown = responses
-    .filter((r) => r.status() < 300 || r.status() >= 400)
-    .map((r) => ({ url: r.url(), type: r.headers()["content-type"] ?? "" }))
-    .filter(({ type }) => !TEXT_TYPE.test(type) && !BINARY_TYPE.test(type));
-  expect(unknown, "中身を検査できない種類の応答").toEqual([]);
+    const unknown = traffic.responses
+      .filter((r) => r.status() < 300 || r.status() >= 400)
+      .map((r) => ({ url: r.url(), type: r.headers()["content-type"] ?? "" }))
+      .filter(({ type }) => !TEXT_TYPE.test(type) && !BINARY_TYPE.test(type));
+    expect(unknown, "中身を検査できない種類の応答").toEqual([]);
 
-  expect(texts.some(({ text }) => findSecrets(text, [LEAK_CANARY]).length > 0), "陽性対照: 応答の中身からカナリアを読める").toBe(true);
-  const leaks = texts.flatMap(({ url, text }) => findSecrets(text, secrets).map((hit) => `${url}: 「${hit.secret}」 …${hit.context}…`));
-  expect(leaks).toEqual([]);
+    expect(traffic.frames.filter((f) => f !== PONG), "つないだ直後と各問題のフレームを受け取っている").toHaveLength(questions.length + 1);
+    expect(texts.some(({ text }) => findSecrets(text, [LEAK_CANARY]).length > 0), "陽性対照: 応答の中身からカナリアを読める").toBe(true);
+    const leaks = texts.flatMap(({ url, text }) => findSecrets(text, secrets).map((hit) => `${url}: 「${hit.secret}」 …${hit.context}…`));
+    expect(leaks).toEqual([]);
+    expect(viewShapeProblems(traffic.frames)).toEqual([]);
 
-  const imageUrls = responses.filter((r) => (r.headers()["content-type"] ?? "").startsWith("image/")).map((r) => r.url());
-  const shown = new Set(questions.flatMap((q) => q.options.map((o) => new URL(o.image, page.url()).href)));
-  expect(imageUrls, "全問題の写真を受け取っている").toEqual(expect.arrayContaining([...shown]));
-  const named = imageUrls.flatMap((url) => {
-    const decoded = decodeURIComponent(url).normalize("NFC");
-    return imageBaseNames.filter((name) => decoded.includes(name)).map((name) => `${url}: 「${name}」`);
+    const imageUrls = traffic.responses.filter((r) => (r.headers()["content-type"] ?? "").startsWith("image/")).map((r) => r.url());
+    const shown = new Set(questions.flatMap((q) => q.options.map((o) => new URL(o.image, page.url()).href)));
+    expect(imageUrls, "全問題の写真を受け取っている").toEqual(expect.arrayContaining([...shown]));
+    const named = imageUrls.flatMap((url) => {
+      const decoded = decodeURIComponent(url).normalize("NFC");
+      return imageBaseNames.filter((name) => decoded.includes(name)).map((name) => `${url}: 「${name}」`);
+    });
+    expect(named).toEqual([]);
   });
-  expect(named).toEqual([]);
 });

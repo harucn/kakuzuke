@@ -89,7 +89,7 @@
 
 ## 5. 参加者画面を追従させる
 
-- [ ] 5.1 `GuestScreen` を `useVenue("guest")` に移す（Decisions 4・5）。
+- [x] 5.1 `GuestScreen` を `useVenue("guest")` に移す（Decisions 4・5）。
   - ボタンと `useHydrated` を消す。
   - 問題が変わったら先頭へスクロールし、次の問題の写真を先読みする。
   - 正解発表の表示と紙吹雪は `src/ui/` の部品で描く。
